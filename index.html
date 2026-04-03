@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>知識王者挑戰賽｜中英雙語．動態平衡題庫</title>
+    <style>
+        :root {
+            --bg: #050a10;
+            --accent: #00f2ff;
+            --warning: #fdbb2d;
+            --danger: #ff3e60;
+            --glass: rgba(255,255,255,0.1);
+        }
+        * { box-sizing: border-box; font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; user-select: none; }
+        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background: var(--bg); color: white; }
+
+        .progress-bar-wrap { position: absolute; top: 0; left: 0; width: 100%; height: 12px; background: rgba(255,255,255,0.05); z-index: 100; }
+        #mainProgress { height: 100%; width: 0%; background: var(--accent); box-shadow: 0 0 15px var(--accent); transition: width 0.5s; }
+
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 40px; text-align: center; }
+        .screen.active { display: flex; }
+
+        .buffer-overlay { background: rgba(0,0,0,0.98); z-index: 1000; }
+        .buffer-num { font-size: 22rem; font-weight: 900; color: #fff; text-shadow: 0 0 80px var(--accent); animation: pulse 0.8s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(1.1); opacity: 1; } }
+
+        .timer-wrap { position: relative; width: 240px; height: 240px; margin-bottom: 20px; }
+        .timer-svg { transform: rotate(-90deg); width: 240px; height: 240px; }
+        .timer-svg circle { fill: none; stroke-width: 20; stroke-dasharray: 691; stroke-dashoffset: 0; stroke-linecap: round; transition: stroke-dashoffset 0.1s linear, stroke 0.3s; }
+        #timerRing { stroke: var(--accent); filter: drop-shadow(0 0 15px var(--accent)); }
+        #timerText { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 7rem; font-weight: bold; font-family: monospace; }
+        .timer-danger-anim { animation: shake 0.2s infinite; }
+        @keyframes shake { 0% { transform: translate(-52%, -50%); } 50% { transform: translate(-48%, -50%); } 100% { transform: translate(-50%, -50%); } }
+
+        #qDisplay { font-size: 4.5rem; margin: 20px 0; min-height: 250px; display: flex; align-items: center; line-height: 1.2; padding: 0 40px; font-weight: 600; text-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; width: 95%; max-width: 1600px; }
+        .opt-btn { padding: 70px 30px; font-size: 3.8rem; background: var(--glass); border: 6px solid rgba(255,255,255,0.1); border-radius: 50px; transition: 0.2s; font-weight: 900; cursor: pointer; backdrop-filter: blur(4px); }
+        .opt-btn:active { transform: scale(0.97); }
+        .correct { background: #00e676 !important; color: #000; border-color: #fff; transform: scale(1.02); box-shadow: 0 0 35px #00e676; }
+        .wrong { background: var(--danger) !important; opacity: 0.5; filter: grayscale(0.2); }
+
+        .ctrl-panel { position: absolute; top: 30px; right: 30px; display: flex; gap: 15px; z-index: 500; }
+        .btn-ui { padding: 15px 30px; background: rgba(255,255,255,0.1); border: 2px solid var(--accent); color: white; border-radius: 15px; font-size: 1.5rem; cursor: pointer; backdrop-filter: blur(8px); transition: 0.2s; }
+        .btn-ui:hover { background: var(--accent); color: #000; }
+        .start-btn { padding: 40px 100px; font-size: 3rem; border-radius: 80px; border: none; font-weight: bold; cursor: pointer; margin: 20px; transition: 0.3s; }
+
+        .prize-popup { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 2000; display: none; flex-direction: column; justify-content: center; align-items: center; }
+        .prize-card { background: var(--warning); color: #000; padding: 80px 120px; border-radius: 60px; font-size: 6rem; font-weight: 900; box-shadow: 0 0 100px var(--warning); animation: bounce 0.6s; }
+        @keyframes bounce { 0% { transform: scale(0.7); opacity: 0; } 80% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        @media (max-width: 900px) {
+            .options-grid { gap: 20px; }
+            .opt-btn { font-size: 2.2rem; padding: 40px 20px; }
+            #qDisplay { font-size: 2.8rem; padding: 0 15px; }
+            .timer-wrap { width: 180px; height: 180px; }
+            .timer-svg { width: 180px; height: 180px; }
+            #timerText { font-size: 5rem; }
+            .start-btn { padding: 20px 50px; font-size: 2rem; }
+            .prize-card { padding: 40px 60px; font-size: 3.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="progress-bar-wrap"><div id="mainProgress"></div></div>
+
+    <div class="ctrl-panel" id="uiCtrls" style="display:none;">
+        <button class="btn-ui" id="pauseBtn">⏸️ 暫停遊戲</button>
+        <button class="btn-ui" onclick="location.reload()">🔄 重新開始</button>
+    </div>
+
+    <div id="scrStart" class="screen active">
+        <h1 style="font-size: 7rem; color: var(--accent); margin-bottom: 10px;">🏆 知識王者</h1>
+        <p style="font-size: 2rem; letter-spacing: 8px; margin-bottom: 60px; opacity: 0.8;">中英雙語 · 動態平衡題庫</p>
+        <div>
+            <button class="start-btn" style="background: var(--danger); color: white;" onclick="initGame('zh')">🇭🇰 繁體中文</button>
+            <button class="start-btn" style="background: #2196f3; color: white;" onclick="initGame('en')">🇬🇧 English</button>
+        </div>
+        <p style="margin-top: 60px; font-size: 1.2rem; opacity:0.6;">✓ 答案A/B均衡分佈 ✓ 四級難度 ✓ 即時獎勵</p>
+    </div>
+
+    <div id="scrBuffer" class="screen buffer-overlay">
+        <div style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;">⚡ 準備進入下一題</div>
+        <div id="bufferNum" class="buffer-num">5</div>
+    </div>
+
+    <div id="scrGame" class="screen">
+        <div style="position:absolute; top:40px; left:50px; font-size:2.5rem; font-weight:bold; background: rgba(0,0,0,0.5); padding: 8px 25px; border-radius: 60px;">
+            📍 第 <span id="uiIdx">1</span> / 20 題
+        </div>
+
+        <div class="timer-wrap">
+            <svg class="timer-svg">
+                <circle cx="120" cy="120" r="110" stroke="rgba(255,255,255,0.1)"></circle>
+                <circle id="timerRing" cx="120" cy="120" r="110"></circle>
+            </svg>
+            <div id="timerText">15</div>
+        </div>
+
+        <div id="qDisplay">載入題目中...</div>
+
+        <div class="options-grid">
+            <div id="optA" class="opt-btn">A</div>
+            <div id="optB" class="opt-btn">B</div>
+        </div>
+        
+        <div style="margin-top: 40px; font-size: 2.5rem; color: var(--warning); background: rgba(0,0,0,0.4); padding: 10px 30px; border-radius: 50px;">🏅 累計得分: <span id="uiScore">0</span></div>
+    </div>
+
+    <div id="scrPrize" class="prize-popup">
+        <div class="prize-card">🎁 寶箱獎勵 +1</div>
+        <button class="start-btn" style="background:#fff; color:#000; margin-top:80px;" onclick="closePrize()">✨ 領取並繼續</button>
+    </div>
+
+    <div id="scrEnd" class="screen">
+        <h1 style="font-size: 8rem; color: var(--accent);">🏁 完賽!</h1>
+        <div style="font-size: 4rem; background: rgba(255,255,255,0.05); padding: 60px 120px; border-radius: 50px;">
+            總得分：<span id="endScore">0</span> / 20<br>
+            <span style="color: var(--warning); font-size: 5rem;">🎁 獲得獎品：<span id="endPrize">0</span> 份</span>
+        </div>
+        <button class="start-btn" style="background:var(--accent); color:#000;" onclick="location.reload()">🏠 回主頁</button>
+    </div>
+
+<script>
+// --------------------------------------------------------------
+// 1. 核心題庫 (中文完整保留原始知識)
+// --------------------------------------------------------------
+const POOL = {
+    zh: {
+        lv1: [
+            {q:"昂坪 360 纜車連接東涌與哪裡？", a:"大澳", b:"昂坪", c:"B"},
+            {q:"昂坪 360 哪種車廂可以透過透明底板看風景？", a:"水晶車廂", b:"標準車廂", c:"A"},
+            {q:"從纜車上可以看到哪尊著名的巨大佛像？", a:"天壇大佛", b:"樂山大佛", c:"A"},
+            {q:"香港最常見的紅色計程車主要在哪些地區服務？", a:"市區(九龍/港島)", b:"大嶼山", c:"A"},
+            {q:"香港人常說的「叮叮車」是指哪種交通工具？", a:"地鐵", b:"電車", c:"B"},
+            {q:"昂坪 360 纜車的單程路程大約是多少分鐘？", a:"約 25 分鐘", b:"約 60 分鐘", c:"A"},
+            {q:"香港國際機場位於哪一個島上？", a:"赤鱲角", b:"青衣", c:"A"},
+            {q:"昂坪 360 纜車在哪個地鐵站附近可以搭乘？", a:"東涌站", b:"欣澳站", c:"A"},
+            {q:"香港著名的「東方威尼斯」是指哪裡？", a:"大澳", b:"西貢", c:"A"},
+            {q:"昂坪市集內的「與佛同行」是關於誰的故事？", a:"釋迦牟尼", b:"孫悟空", c:"A"},
+            {q:"香港的傳統交通工具中，哪種是在水上行走的？", a:"天星小輪", b:"纜車", c:"A"},
+            {q:"大嶼山的英文名稱是什麼？", a:"Lantau Island", b:"Lamma Island", c:"A"},
+            {q:"在昂坪市集，你可以看到哪種動物在路上漫步？", a:"牛", b:"大象", c:"A"},
+            {q:"在纜車上可以看見哪座連接珠海與澳門的大橋？", a:"港珠澳大橋", b:"青馬大橋", c:"A"},
+            {q:"昂坪市集內可以吃到哪種香港特色甜品？", a:"豆腐花", b:"馬卡龍", c:"A"},
+            {q:"天壇大佛是坐著還是站著的？", a:"坐著", b:"站著", c:"A"},
+            {q:"香港常見的便利店叫什麼名稱？", a:"7-Eleven", b:"Walmart", c:"A"},
+            {q:"昂坪 360 的車廂外面通常是什麼顏色？", a:"藍色", b:"紅色", c:"A"},
+            {q:"香港「山頂纜車」的車身通常是什麼顏色？", a:"紅色(現為綠色)", b:"綠色", c:"B"},
+            {q:"昂坪 360 纜車共有多少個轉向站？", a:"2個", b:"4個", c:"A"},
+            {q:"香港哪種巴士是兩層的？", a:"雙層巴士", b:"小巴", c:"A"},
+            {q:"昂坪市集裡的許願樹叫什麼名字？", a:"菩提許願樹", b:"聖誕樹", c:"A"},
+            {q:"在東涌纜車站附近的大型商場叫？", a:"東薈城", b:"海港城", c:"A"},
+            {q:"天壇大佛旁邊的著名古剎叫？", a:"寶蓮禪寺", b:"黃大仙祠", c:"A"},
+            {q:"香港「雪糕車」播放的曲子叫什麼？", a:"藍色多瑙河", b:"小星星", c:"A"},
+            {q:"昂坪 360 是在哪個島運行的？", a:"大嶼山", b:"青衣島", c:"A"},
+            {q:"香港人的主要語言是什麼？", a:"粵語(廣東話)", b:"日語", c:"A"},
+            {q:"在昂坪 360 可以看到飛機升降嗎？", a:"可以(鄰近機場)", b:"不可以", c:"A"},
+            {q:"昂坪市集有免費影院嗎？", a:"有(與佛同行)", b:"沒有", c:"A"},
+            {q:"香港的計程車在車頂有什麼標誌？", a:"TAXI燈箱", b:"大紅球", c:"A"},
+            {q:"昂坪纜車在什麼天氣會暫停？", a:"雷暴或強風", b:"晴天", c:"A"},
+            {q:"大嶼山最高的山峰叫什麼？", a:"鳳凰山", b:"大東山", c:"A"},
+            {q:"香港哪種硬幣是面值最大的？", a:"十元", b:"五元", c:"A"},
+            {q:"昂坪 360 的「全景纜車」有什麼特點？", a:"幾乎全透明視野", b:"內設咖啡廳", c:"A"},
+            {q:"大澳最出名的特產是？", a:"鹹魚與蝦膏", b:"雞蛋仔", c:"A"},
+            {q:"香港的地鐵系統簡稱是什麼？", a:"MTR", b:"KCR", c:"A"},
+            {q:"天壇大佛總共有多少級樓梯？", a:"268級", b:"100級", c:"A"},
+            {q:"昂坪市集的開放時間通常是？", a:"早上至傍晚", b:"24小時", c:"A"},
+            {q:"昂坪 360 是單軌還是雙軌系統？", a:"雙纜索系統", b:"單軌系統", c:"A"},
+            {q:"香港的國花（區花）是什麼？", a:"洋紫荊", b:"牡丹", c:"A"},
+            {q:"大嶼山哪裡有漂亮的沙灘？", a:"長沙泳灘", b:"尖沙咀", c:"A"},
+            {q:"在昂坪市集可以買到明信片嗎？", a:"可以", b:"不可以", c:"A"},
+            {q:"昂坪 360 屬於哪間公司營運？", a:"港鐵公司附屬公司", b:"九巴", c:"A"},
+            {q:"昂坪纜車會經過大海嗎？", a:"會", b:"不會", c:"A"},
+            {q:"天壇大佛是什麼顏色的？", a:"青銅色", b:"亮藍色", c:"A"},
+            {q:"香港故事：以前香港是個小...？", a:"漁村", b:"工業區", c:"A"},
+            {q:"昂坪 360 車廂內有空調嗎？", a:"沒有(自然通風)", b:"有", c:"A"},
+            {q:"在東涌站可以轉乘地鐵去九龍嗎？", a:"可以", b:"不可以", c:"A"},
+            {q:"昂坪市集有中式建築嗎？", a:"有", b:"沒有", c:"A"},
+            {q:"大嶼山的大佛面向哪個方向？", a:"北方", b:"東方", c:"A"}
+        ],
+        lv2: [
+            {q:"昂坪 360 是屬於哪種形式的纜車系統？", a:"單線循環式", b:"雙纜索循環式", c:"B"},
+            {q:"大澳著名的「棚屋」是蓋在什麼上面的？", a:"水面木樁", b:"山頂石頭", c:"A"},
+            {q:"昂坪市集附近的「心經簡林」是用什麼材質做成的？", a:"大型木柱", b:"大理石", c:"A"},
+            {q:"昂坪 360 纜車在運行中會轉向幾次？", a:"2次", b:"無轉向", c:"A"},
+            {q:"香港哪種渡輪連接尖沙咀與中環、已有百年歷史？", a:"天星小輪", b:"新渡輪", c:"A"},
+            {q:"大嶼山中，哪條山徑是著名的遠足路段？", a:"鳳凰徑", b:"麥理浩徑", c:"A"},
+            {q:"香港每年的「搶包山」活動是在哪個島舉行？", a:"長洲", b:"南丫島", c:"A"},
+            {q:"昂坪 360 的名稱中，「360」代表什麼意思？", a:"360度全景視野", b:"全長360米", c:"A"},
+            {q:"昂坪市集的建築風格主要模仿哪個朝代？", a:"唐朝", b:"清朝", c:"A"},
+            {q:"從東涌出發，第一個轉向站位於？", a:"機場島", b:"彌勒山", c:"A"},
+            {q:"香港以前用作防衛的「炮台」遺址在大嶼山哪裡？", a:"東涌炮台", b:"赤柱炮台", c:"A"},
+            {q:"昂坪纜車的標準車廂最多可載多少人？", a:"17人", b:"10人", c:"A"},
+            {q:"昂坪 360 穿越的是哪個郊野公園？", a:"北大嶼郊野公園", b:"城門郊野公園", c:"A"},
+            {q:"天壇大佛右手施展的是什麼手印？", a:"施無畏印", b:"說法印", c:"A"},
+            {q:"大嶼山「鳳凰山」以看什麼景觀最著名？", a:"日出", b:"極光", c:"A"},
+            {q:"香港故事：哪種交通工具曾被稱為「街坊車」？", a:"小巴", b:"人力車", c:"A"},
+            {q:"昂坪 360 的水晶車廂底板是用什麼做的？", a:"強化鋼化玻璃", b:"普通塑料", c:"A"},
+            {q:"「心經簡林」是由多少根木柱組成的？", a:"38根", b:"100根", c:"A"},
+            {q:"香港「平安包」上面通常印有什麼顏色的字？", a:"紅色", b:"黑色", c:"A"},
+            {q:"大嶼山梅窩以前擁有的「銀礦」現在變成了？", a:"銀礦洞遺址", b:"地鐵站", c:"A"},
+            {q:"昂坪纜車在強風下減速是為了？", a:"減少車廂擺動", b:"節省電力", c:"A"},
+            {q:"大澳居民傳統住宅「棚屋」是為了預防？", a:"潮汐水淹", b:"地震", c:"A"},
+            {q:"香港故事：大坑舞火龍是為了？", a:"驅除瘟疫", b:"祝賀生日", c:"A"},
+            {q:"大嶼山最常見的流浪動物是？", a:"黃牛/水牛", b:"斑馬", c:"A"},
+            {q:"香港海洋公園位於哪個島？", a:"香港島", b:"大嶼山", c:"A"},
+            {q:"香港最高的大廈叫什麼？", a:"環球貿易廣場(ICC)", b:"IFC", c:"A"},
+            {q:"昂坪 360 的纜索是誰製造的？", a:"專業工程公司", b:"一般建築商", c:"A"},
+            {q:"天壇大佛座下的蓮花瓣共有多少片？", a:"60片", b:"20片", c:"A"},
+            {q:"大嶼山昂坪的氣溫通常比市區？", a:"低幾度", b:"高幾度", c:"A"},
+            {q:"香港「廟街」以什麼聞名？", a:"夜市與算命", b:"滑雪場", c:"A"},
+            {q:"香港故事：哪種茶飲被稱為香港名產？", a:"絲襪奶茶", b:"珍珠奶茶", c:"A"},
+            {q:"昂坪纜車鋼纜的直徑大約是多少？", a:"約50毫米", b:"約5毫米", c:"A"},
+            {q:"昂坪市集裡的「靈猴影院」以前存在嗎？", a:"存在過", b:"從未有過", c:"A"},
+            {q:"香港故事：哪種點心有「脆皮」且外形像水果？", a:"菠蘿包", b:"芒果布甸", c:"A"},
+            {q:"大嶼山哪裡可以看到中華白海豚？", a:"大澳附近海域", b:"東涌灣", c:"A"},
+            {q:"香港「黃大仙祠」是以什麼最出名？", a:"求籤", b:"觀星", c:"A"},
+            {q:"昂坪纜車車廂在站內是自動開啟門嗎？", a:"是", b:"不是", c:"A"},
+            {q:"香港「紅磡」最著名的建築是？", a:"體育館(紅館)", b:"迪士尼", c:"A"},
+            {q:"昂坪 360 纜車在哪一年發生過著名的墜下意外(無人受傷)？", a:"2007年", b:"2020年", c:"A"},
+            {q:"大嶼山「昂坪」的地勢大約海拔多少米？", a:"約440米", b:"約1000米", c:"A"},
+            {q:"香港故事：哪座橋連接青衣與大嶼山？", a:"青馬大橋", b:"汀九橋", c:"A"},
+            {q:"昂坪市集有中式星巴克嗎？", a:"有(特色裝修)", b:"沒有", c:"A"},
+            {q:"香港「尖沙咀」鐘樓以前是什麼車站的一部分？", a:"火車站", b:"地鐵站", c:"A"},
+            {q:"大嶼山大澳的「水上婚禮」是哪個族群的傳統？", a:"蜑家人", b:"客家人", c:"A"},
+            {q:"昂坪纜車的轉向站是否開放遊客進出？", a:"不開放", b:"開放", c:"A"},
+            {q:"香港故事：哪種交通工具的車資最低？", a:"電車(叮叮)", b:"纜車", c:"A"},
+            {q:"大嶼山「石壁水塘」下面曾是什麼？", a:"村落", b:"金礦", c:"A"},
+            {q:"昂坪纜車的鋼纜是循環不停流動的嗎？", a:"是", b:"不是", c:"A"},
+            {q:"香港故事：哪裡被稱為「購物天堂」？", a:"銅鑼灣/尖沙咀", b:"大澳", c:"A"},
+            {q:"昂坪 360 每年會停駛保養嗎？", a:"會", b:"不會", c:"A"}
+        ],
+        lv3: [
+            {q:"昂坪 360 纜車的建設使用了哪種動物協助？", a:"騾子", b:"駱駝", c:"A"},
+            {q:"天壇大佛是由什麼金屬鑄造的？", a:"青銅", b:"黃金", c:"A"},
+            {q:"香港故事：哪年新界被租借給英國？", a:"1898年", b:"1841年", c:"A"},
+            {q:"昂坪 360 纜車全長大約多少公里？", a:"5.7公里", b:"2.5公里", c:"A"},
+            {q:"香港第一條海底隧道(紅隧)哪年通車？", a:"1972年", b:"1997年", c:"A"},
+            {q:"昂坪 360 鋼纜的張力由誰控制？", a:"液壓調節系統", b:"手動滑輪", c:"A"},
+            {q:"天壇大佛基座參考了北京哪個地標？", a:"天壇祈年殿", b:"天安門", c:"A"},
+            {q:"大嶼山梅窩「銀礦洞」因何危險而封閉？", a:"結構崩塌風險", b:"水源污染", c:"A"},
+            {q:"香港故事：太平山頂以前主要是誰居住？", a:"政府高官與外商", b:"本地漁民", c:"A"},
+            {q:"昂坪纜車轉向站的功用是？", a:"改變鋼纜行駛路徑", b:"讓車廂加速", c:"A"},
+            {q:"大嶼山寶蓮寺的「大茅蓬」是指？", a:"創寺初期的簡陋草庵", b:"巨大的廚房", c:"A"},
+            {q:"昂坪 360 纜車在哪一年正式對外開放？", a:"2006年", b:"1997年", c:"A"},
+            {q:"香港故事：哪位清朝官員負責禁煙？", a:"林則徐", b:"李鴻章", c:"A"},
+            {q:"昂坪纜車最長的一段跨距在哪裡？", a:"跨海段(東涌灣)", b:"彌勒山段", c:"A"},
+            {q:"香港故事：哪份條約割讓了香港島？", a:"南京條約", b:"北京條約", c:"A"},
+            {q:"天壇大佛內部的結構是用什麼支撐的？", a:"鋼骨架", b:"木樑", c:"A"},
+            {q:"昂坪 360 系統是由哪間外國公司提供技術？", a:"Leitner-Poma", b:"Disney", c:"A"},
+            {q:"大嶼山「鳳凰山」海拔高度大約是？", a:"934米", b:"500米", c:"A"},
+            {q:"香港故事：哪裡曾被稱為「九龍皇帝」墨寶所在地？", a:"電箱/天橋柱", b:"故宮", c:"A"},
+            {q:"昂坪纜車塔柱中最矮的是哪一個？", a:"位於終點站附近的塔柱", b:"跨海段塔柱", c:"A"},
+            {q:"香港故事：哪座建築是以前的港督府？", a:"禮賓府", b:"立法會", c:"A"},
+            {q:"昂坪 360 水晶車廂的玻璃厚度大約？", a:"約50毫米", b:"約10毫米", c:"A"},
+            {q:"香港故事：1841年英軍首次登陸的地點是？", a:"水坑口(Possession Point)", b:"銅鑼灣", c:"A"},
+            {q:"昂坪市集的「菩提許願樹」是真的嗎？", a:"人造纖維結構", b:"活生生的樹", c:"A"},
+            {q:"大嶼山「石壁水塘」的壁畫是由誰創作的？", a:"囚犯", b:"著名畫家", c:"A"},
+            {q:"昂坪纜車鋼纜是如何連接成一個圓圈的？", a:"插接(Splicing)技術", b:"焊接", c:"A"},
+            {q:"香港故事：哪種交通工具曾在港島斜坡行走？", a:"轎子", b:"電車", c:"A"},
+            {q:"昂坪 360 纜車車廂的平均速度是？", a:"每秒5-7米", b:"每秒50米", c:"A"},
+            {q:"天壇大佛的手印：左手放於膝上，代表？", a:"予願印(施予恩惠)", b:"攻擊印", c:"A"},
+            {q:"大嶼山大澳的「鹹蛋黃」是如何製作的？", a:"鹽醃", b:"糖漬", c:"A"},
+            {q:"香港故事：哪年香港回歸中國？", a:"1997年", b:"1984年", c:"A"},
+            {q:"昂坪 360 的運作受幾號風球影響會停駛？", a:"3號強風信號或以上", b:"只有8號才停", c:"A"},
+            {q:"香港「九龍城寨」以前是什麼地方？", a:"軍事駐防據點", b:"遊樂場", c:"A"},
+            {q:"昂坪市集「與佛同行」影片長度約？", a:"約15-20分鐘", b:"1小時", c:"A"},
+            {q:"大嶼山「昂坪」以前種植過什麼作物？", a:"茶葉(昂坪茶園)", b:"橡膠", c:"A"},
+            {q:"香港故事：哪條街以古董貿易著名？", a:"荷李活道", b:"彌敦道", c:"A"},
+            {q:"昂坪纜車塔柱的數量總共是多少個？", a:"8個", b:"20個", c:"A"},
+            {q:"香港故事：哪位名人曾在大嶼山寶蓮寺短期修行？", a:"不少知名人士", b:"李小龍", c:"A"},
+            {q:"昂坪 360 纜車的鋼纜是哪國製造的？", a:"意大利", b:"中國", c:"A"},
+            {q:"天壇大佛的頭部內藏有什麼？", a:"通風與結構檢查口", b:"珠寶", c:"A"},
+            {q:"香港故事：哪種交通工具曾叫「雞車」？", a:"早期改裝小巴", b:"人力車", c:"A"},
+            {q:"大嶼山梅窩「銀礦灣」曾是哪個少數民族的聚居地？", a:"蜑家", b:"藏族", c:"A"},
+            {q:"昂坪纜車車廂的設計可以承受幾強的風力？", a:"強風及部分烈風", b:"微風", c:"A"},
+            {q:"香港故事：哪裡被譽為「東方之珠」？", a:"香港", b:"澳門", c:"A"},
+            {q:"昂坪 360 的車廂是由哪裡組裝的？", a:"法國", b:"日本", c:"A"},
+            {q:"天壇大佛的建造歷時多久？", a:"約12年", b:"1年", c:"A"},
+            {q:"香港故事：哪座山被稱為「獅子山下」的精神象徵？", a:"獅子山", b:"大帽山", c:"A"},
+            {q:"昂坪 360 纜車是全亞洲最長的？", a:"雙纜索纜車系統", b:"過山車", c:"A"},
+            {q:"大嶼山「心經簡林」的木材來自哪裡？", a:"非洲(花梨木)", b:"本地", c:"A"},
+            {q:"香港故事：哪種硬幣的邊緣是花瓣形的？", a:"二元/二毫", b:"一元", c:"A"}
+        ],
+        lv4: [
+            {q:"天壇大佛內部鋼骨主要是為了？", a:"抗颱風與地震震動", b:"增加重量", c:"A"},
+            {q:"昂坪 360 纜車系統的驅動馬達功率？", a:"約1600千瓦(kW)", b:"約10千瓦", c:"A"},
+            {q:"香港故事：康熙「遷界令」是為了？", a:"對付台灣鄭成功勢力", b:"防範海嘯", c:"A"},
+            {q:"昂坪 360 纜車塔柱間最長跨距？", a:"約1.5公里(跨海段)", b:"約500米", c:"A"},
+            {q:"「昂坪」地理上是指？", a:"高地平原(Tableland)", b:"深邃山谷", c:"A"},
+            {q:"天壇大佛為何坐北向南？", a:"寓意面向香港及中國", b:"地形限制", c:"A"},
+            {q:"香港最早的硬幣鑄造於哪年？", a:"1863年", b:"1945年", c:"A"},
+            {q:"昂坪纜車鋼纜最快行駛速度？", a:"每秒約7米", b:"每秒30米", c:"A"},
+            {q:"「昂坪 360」名字確定於哪年？", a:"2005年", b:"2000年", c:"A"},
+            {q:"大嶼山大澳以前著名的產業？", a:"產鹽與捕魚", b:"製造絲綢", c:"A"},
+            {q:"香港故事：哪位港督推行十年建屋？", a:"麥理浩爵士", b:"衛奕信爵士", c:"A"},
+            {q:"昂坪纜車在風速達多少時必須停駛？", a:"約90公里/小時(持續)", b:"30公里/小時", c:"A"},
+            {q:"昂坪 360 鋼纜的壽命大約是多少年？", a:"約30年(視乎損耗)", b:"3年", c:"A"},
+            {q:"天壇大佛底座的三層平台象徵？", a:"三壇大戒/天壇意象", b:"三層蛋糕", c:"A"},
+            {q:"香港故事：哪種條約割讓了九龍半島？", a:"北京條約", b:"南京條約", c:"A"},
+            {q:"昂坪 360 纜車的「承托纜」直徑？", a:"約70毫米", b:"約10毫米", c:"A"},
+            {q:"大嶼山「大澳」曾因產鹽被稱為香港的？", a:"鹽倉", b:"糖廠", c:"A"},
+            {q:"昂坪市集內的建築物屋頂是什麼設計？", a:"斜頂灰瓦(仿唐)", b:"全平頂", c:"A"},
+            {q:"香港故事：哪座建築是以前的最高法院？", a:"現終審法院(舊立法會)", b:"警察局", c:"A"},
+            {q:"昂坪纜車轉向站的機器房通常如何冷卻？", a:"自然通風與風扇", b:"強力冷氣", c:"A"},
+            {q:"天壇大佛的頭部是由多少塊組件拼成的？", a:"100多塊", b:"1塊完整", c:"A"},
+            {q:"大嶼山「鳳凰山」原名叫什麼？", a:"爛頭山(Lantau)", b:"大東山", c:"A"},
+            {q:"香港故事：哪種交通工具曾在維多利亞港叫「嘩啦嘩啦」？", a:"電船", b:"叮叮", c:"A"},
+            {q:"昂坪 360 纜車的控制系統具備？", a:"全自動故障偵測", b:"僅人工監測", c:"A"},
+            {q:"大嶼山「彌勒山」的高度約是多少？", a:"751米", b:"200米", c:"A"},
+            {q:"香港故事：哪裡被稱為「香火最鼎盛」的道教廟宇？", a:"黃大仙祠", b:"車公廟", c:"A"},
+            {q:"昂坪 360 纜車有幾條主要鋼纜(一邊一對)？", a:"2條(承托+牽引)", b:"1條", c:"A"},
+            {q:"天壇大佛手上的「法輪」刻在何處？", a:"手心(施無畏印處)", b:"額頭", c:"A"},
+            {q:"香港故事：哪種小吃被稱為「白糖糕」的兄弟？", a:"倫教糕", b:"紅豆糕", c:"A"},
+            {q:"昂坪 360 纜車車廂在站內脫離鋼纜靠什麼行走？", a:"輸送帶/輪胎傳動", b:"慣性", c:"A"},
+            {q:"大嶼山「東涌」古稱是什麼？", a:"東龍口", b:"西貢", c:"A"},
+            {q:"香港故事：哪年香港被日軍佔領(黑色聖誕節)？", a:"1941年", b:"1997年", c:"A"},
+            {q:"昂坪 360 纜車共有多少個救援馬達？", a:"多組(冗餘設計)", b:"1組", c:"A"},
+            {q:"天壇大佛的蓮花瓣是用什麼工法連接？", a:"螺栓加焊接", b:"黏膠", c:"A"},
+            {q:"香港故事：哪座燈塔是香港現存最古老？", a:"鶴咀燈塔", b:"青嶼燈塔", c:"A"},
+            {q:"昂坪 360 纜車塔柱的基座是如何施工的？", a:"多用直升機或人力運料", b:"大型起重機", c:"A"},
+            {q:"大嶼山大澳的「水神」信仰主要是？", a:"楊侯公", b:"關帝", c:"A"},
+            {q:"香港故事：以前香港流通的「大洋」是什麼幣？", a:"墨西哥銀圓", b:"美金", c:"A"},
+            {q:"昂坪纜車轉向站內，鋼纜繞過的大輪直徑約？", a:"約6米", b:"約1米", c:"A"},
+            {q:"天壇大佛的底座層內設有什麼？", a:"功德堂與展覽廳", b:"停車場", c:"A"},
+            {q:"香港故事：哪種交通工具的顏色是「藍色」的？", a:"大嶼山計程車", b:"市區計程車", c:"A"},
+            {q:"昂坪 360 纜車是亞洲首個採用什麼技術的系統？", a:"雙纜索循環式系統", b:"磁浮系統", c:"A"},
+            {q:"大嶼山「梅窩」的名字由來是因為地形像什麼？", a:"五瓣梅花", b:"鳥窩", c:"A"},
+            {q:"香港故事：以前香港的製糖廠在哪區？", a:"太古(鰂魚涌)", b:"中環", c:"A"},
+            {q:"昂坪纜車車廂在強風下會停在？", a:"最近的車站或平坦處", b:"原地不動", c:"A"},
+            {q:"天壇大佛的耳垂設計長度約為？", a:"約2米", b:"約10釐米", c:"A"},
+            {q:"香港故事：哪位藝術家被稱為「九龍皇帝」？", a:"曾灶財", b:"徐悲鴻", c:"A"},
+            {q:"昂坪 360 纜車系統的總工程費用大約？", a:"約10億港幣", b:"約1億港幣", c:"A"},
+            {q:"大嶼山「石壁水塘」竣工於哪一年？", a:"1963年", b:"1997年", c:"A"},
+            {q:"香港故事：哪條鐵路曾有「窄軌」時期？", a:"沙頭角鐵路", b:"東鐵線", c:"A"}
+        ]
+    }
+};
+
+// --------------------------------------------------------------
+// 2. 英文題庫 (擴充豐富版本)
+// --------------------------------------------------------------
+const POOL_EN_EXTENDED = {
+    en: {
+        lv1: [
+            {q:"Ngong Ping 360 connects Tung Chung with which place?", a:"Tai O", b:"Ngong Ping", c:"B"},
+            {q:"Which cabin type allows you to see the view through a glass floor?", a:"Crystal Cabin", b:"Standard Cabin", c:"A"},
+            {q:"Which famous giant statue can be seen from the cable car?", a:"Tian Tan Buddha", b:"Leshan Buddha", c:"A"},
+            {q:"What is the color of most urban taxis in Hong Kong?", a:"Red", b:"Green", c:"A"},
+            {q:"What is the nickname for Hong Kong's traditional trams?", a:"Ding Ding", b:"Toot Toot", c:"A"},
+            {q:"How long is a one-way cable car ride approximately?", a:"25 minutes", b:"60 minutes", c:"A"},
+            {q:"On which island is the HK International Airport located?", a:"Chek Lap Kok", b:"Tsing Yi", c:"A"},
+            {q:"Which MTR station is next to the cable car terminal?", a:"Tung Chung Station", b:"Sunny Bay Station", c:"A"},
+            {q:"Which village is known as the 'Venice of the Orient'?", a:"Tai O", b:"Sai Kung", c:"A"},
+            {q:"'Walking with Buddha' in the Village is about whose life?", a:"Siddhartha Gautama", b:"Sun Wukong", c:"A"},
+            {q:"Which iconic HK ferry has been running for over a century?", a:"Star Ferry", b:"New Ferry", c:"A"},
+            {q:"What is the English name of the island where the cable car is?", a:"Lantau Island", b:"Lamma Island", c:"A"},
+            {q:"Which animal can sometimes be seen wandering in Ngong Ping?", a:"Cows", b:"Elephants", c:"A"},
+            {q:"Which bridge connects HK, Zhuhai, and Macao?", a:"HZMB", b:"Tsing Ma Bridge", c:"A"},
+            {q:"What local dessert can you find at Ngong Ping Village?", a:"Tofu Pudding", b:"Macarons", c:"A"},
+            {q:"Is the Tian Tan Buddha sitting or standing?", a:"Sitting", b:"Standing", c:"A"},
+            {q:"What is the most common convenience store in HK?", a:"7-Eleven", b:"Walmart", c:"A"},
+            {q:"What is the main color of the Ngong Ping 360 cabins?", a:"Blue", b:"Red", c:"A"},
+            {q:"What is the color of the current Peak Tram?", a:"Green", b:"Red", c:"A"},
+            {q:"How many angle stations does the cable car have?", a:"2", b:"4", c:"A"},
+            {q:"What kind of buses in HK have two floors?", a:"Double-decker buses", b:"Minibuses", c:"A"},
+            {q:"What is the name of the wishing tree in the Village?", a:"Bodhi Wishing Tree", b:"Christmas Tree", c:"A"},
+            {q:"What is the large mall next to the Tung Chung terminal?", a:"Citygate Outlets", b:"Harbour City", c:"A"},
+            {q:"What is the famous temple next to the Big Buddha?", a:"Po Lin Monastery", b:"Wong Tai Sin Temple", c:"A"},
+            {q:"What song does the HK ice cream van play?", a:"Blue Danube", b:"Twinkle Star", c:"A"},
+            {q:"What is the main language spoken in Hong Kong?", a:"Cantonese", b:"Japanese", c:"A"},
+            {q:"Can you see planes taking off from the cable car?", a:"Yes", b:"No", c:"A"},
+            {q:"What is the symbol flower of Hong Kong?", a:"Bauhinia", b:"Peony", c:"A"},
+            {q:"Which beach on Lantau is the longest in HK?", a:"Cheung Sha Beach", b:"Tsim Sha Tsui", c:"A"},
+            {q:"Is Ngong Ping 360 a bi-cable system?", a:"Yes", b:"No", c:"A"},
+            {q:"What does '360' in the name represent?", a:"360-degree view", b:"360 meters long", c:"A"},
+            {q:"Which HK coin has the highest value?", a:"Ten Dollars", b:"Five Dollars", c:"A"},
+            {q:"What is the MTR short for?", a:"Mass Transit Railway", b:"Mini Train Road", c:"A"},
+            {q:"How many steps lead up to the Big Buddha?", a:"268", b:"100", c:"A"},
+            {q:"Are there restaurants in Ngong Ping Village?", a:"Yes", b:"No", c:"A"},
+            {q:"Historically, Hong Kong was a small...?", a:"Fishing Village", b:"Industrial Zone", c:"A"},
+            {q:"What is the color of Lantau Taxis?", a:"Blue", b:"Red", c:"A"},
+            {q:"Which hill is the Big Buddha facing?", a:"North", b:"South", c:"A"},
+            {q:"What is the currency used in Hong Kong?", a:"HK Dollar", b:"US Dollar", c:"A"},
+            {q:"Which of these is a famous HK breakfast?", a:"Dim Sum", b:"Hamburger", c:"A"},
+            {q:"Is there air-conditioning inside the cabins?", a:"No (Natural ventilation)", b:"Yes", c:"A"},
+            {q:"Where can you see the Pink Dolphins?", a:"Off Tai O coast", b:"Tung Chung Bay", c:"A"},
+            {q:"What is the highest peak on Lantau?", a:"Lantau Peak", b:"Sunset Peak", c:"A"},
+            {q:"Is the cable car ride free?", a:"No", b:"Yes", c:"A"},
+            {q:"What is the main religion associated with Po Lin?", a:"Buddhism", b:"Christianity", c:"A"},
+            {q:"Which fruit is a popular street snack in HK?", a:"Curry Fish Balls", b:"Apples", c:"A"},
+            {q:"What is the shape of the 2-dollar coin?", a:"Scalloped (Wavy)", b:"Round", c:"A"},
+            {q:"Which mall is connected to Tung Chung MTR?", a:"Citygate", b:"IFC", c:"A"},
+            {q:"Can you take the cable car to go to the airport?", a:"No (Only view it)", b:"Yes", c:"A"},
+            {q:"What is 'Dim Sum' literally translated?", a:"Touch the heart", b:"Eat a lot", c:"A"}
+        ],
+        lv2: [{q:"What type of cable car system is Ngong Ping 360?", a:"Mono-cable", b:"Bi-cable Ropeway", c:"B"},{q:"What are the 'Stilt Houses' in Tai O built on?", a:"Wooden Pillars", b:"Concrete Walls", c:"A"},{q:"What material is the 'Wisdom Path' made of?", a:"Wooden Columns", b:"Stone Slabs", c:"A"},{q:"What is the role of the 'Haul Rope' in the system?", a:"To pull the cabins", b:"To support the weight", c:"A"},{q:"Which dynasty does the Village architecture mimic?", a:"Tang Dynasty", b:"Qing Dynasty", c:"A"},{q:"Where is the first angle station from Tung Chung?", a:"Airport Island", b:"Nei Lak Shan", c:"A"},{q:"What is the 'Bun Scrambling' festival island?", a:"Cheung Chau", b:"Lamma", c:"A"},{q:"Which bridge connects Tsing Yi to Lantau?", a:"Tsing Ma Bridge", b:"Stonecutters Bridge", c:"A"},{q:"What was Tai O famous for producing?", a:"Salt & Shrimp Paste", b:"Silk", c:"A"},{q:"Why do cabins slow down during high winds?", a:"To reduce swaying", b:"To save power", c:"A"},{q:"What does the Big Buddha's right hand signify?", a:"Fearlessness (Abhaya Mudra)", b:"Wisdom", c:"A"},{q:"What was 'Silvermine Bay' named after?", a:"A silver mine", b:"The color of the water", c:"A"},{q:"Which trail is the famous hiking path on Lantau?", a:"Lantau Trail", b:"MacLehose Trail", c:"A"},{q:"What is the floor of the Crystal Cabin made of?", a:"Tempered Glass", b:"Acrylic", c:"A"},{q:"How many lotus petals are on the Buddha's base?", a:"60", b:"20", c:"A"},{q:"What was the 'Kowloon Walled City' originally?", a:"Military Fort", b:"Mall", c:"A"},{q:"What is the altitude of Ngong Ping approximately?", a:"440 meters", b:"1000 meters", c:"A"},{q:"Which ferry connects Central and Tsim Sha Tsui?", a:"Star Ferry", b:"TurboJET", c:"A"},{q:"What is a popular tea-time drink in HK?", a:"Silk Stocking Milk Tea", b:"Coffee", c:"A"},{q:"What is the diameter of the haul rope?", a:"Approx. 50mm", b:"Approx. 500mm", c:"A"},{q:"Which park does the cable car fly over?", a:"North Lantau Country Park", b:"Ocean Park", c:"A"},{q:"Is the cable car system eco-friendly?", a:"Yes (Electric powered)", b:"No", c:"A"},{q:"What is the name of the oldest street in HK?", a:"Hollywood Road", b:"Nathan Road", c:"A"},{q:"What do the 'Stilt Houses' protect against?", a:"High tides", b:"Wild animals", c:"A"},{q:"What is 'Silk Stocking' Milk Tea made with?", a:"A cloth filter", b:"Actual socks", c:"A"},{q:"What is the tallest building in Hong Kong?", a:"ICC", b:"IFC", c:"A"},{q:"Which mountain is known as the 'Back of the Dragon'?", a:"Shek O (Dragon's Back)", b:"Lantau Peak", c:"A"},{q:"Where was the old HK airport located?", a:"Kai Tak", b:"Chek Lap Kok", c:"A"},{q:"What is the 'Clock Tower' in TST part of originally?", a:"Railway Station", b:"Church", c:"A"},{q:"How many people can a Standard Cabin hold?", a:"17", b:"30", c:"A"},{q:"Is there a 'Starbucks' in Ngong Ping Village?", a:"Yes", b:"No", c:"A"},{q:"What does the 'Tai O Water Wedding' represent?", a:"Tanka culture", b:"Hakka culture", c:"A"},{q:"Are the cable car cabins recycled?", a:"Yes, parts are", b:"No", c:"A"},{q:"What is the main religion in Po Lin?", a:"Buddhism", b:"Taoism", c:"A"},{q:"What is 'Po Lin' translated as?", a:"Precious Lotus", b:"Big Flower", c:"A"},{q:"Which animal is the 'Lantau Buffalo'?", a:"Water Buffalo", b:"Bison", c:"A"},{q:"Does the cable car run on a loop?", a:"Yes", b:"No", c:"A"},{q:"What is the maximum speed of the cable car?", a:"7 meters per second", b:"70 meters per second", c:"A"},{q:"Which mall is near the Tung Chung MTR?", a:"Citygate", b:"Times Square", c:"A"},{q:"What can you find at the 'Wisdom Path'?", a:"Heart Sutra verses", b:"Cooking recipes", c:"A"},{q:"Which zone is for Lantau Taxis only?", a:"Lantau/Airport", b:"HK Island", c:"A"},{q:"What is the 'Big Buddha' officially called?", a:"Tian Tan Buddha", b:"Amitabha", c:"A"},{q:"What is the 'Grand Hall of Ten Thousand Buddhas'?", a:"Part of Po Lin", b:"A cinema", c:"A"},{q:"What is the 'Ngong Ping Piazza'?", a:"A public square", b:"A food court", c:"A"},{q:"Which peak is the second highest in HK?", a:"Lantau Peak", b:"Tai Mo Shan", c:"A"},{q:"What is the color of the HK dollar 10-note?", a:"Purple/Blue", b:"Red", c:"A"},{q:"Is the Big Buddha facing Mainland China?", a:"Yes", b:"No", c:"A"},{q:"What kind of tea is grown in Ngong Ping?", a:"Lotus Tea", b:"Oolong Tea", c:"A"},{q:"Which trail is good for watching the sunrise?", a:"Lantau Peak", b:"Victoria Peak", c:"A"},{q:"Who manages Ngong Ping 360?", a:"MTR Corporation", b:"KMB", c:"A"}],
+        lv3: [{q:"What animal was used to carry materials for the construction?", a:"Mules", b:"Camels", c:"A"},{q:"What is the Big Buddha made of?", a:"Bronze", b:"Gold", c:"A"},{q:"In which year was the 'New Territories' leased to Britain?", a:"1898", b:"1841", c:"A"},{q:"What is the total length of the cable car ride?", a:"5.7 km", b:"10 km", c:"A"},{q:"When did the first Cross-Harbour Tunnel open?", a:"1972", b:"1997", c:"A"},{q:"Which rope supports the cabin's weight in the system?", a:"Track Rope", b:"Haul Rope", c:"A"},{q:"The Buddha's base is modeled after which place in Beijing?", a:"Temple of Heaven", b:"Forbidden City", c:"A"},{q:"Why was the 'Silvermine Cave' closed?", a:"Structural risks", b:"No more silver", c:"A"},{q:"Which treaty ceded Hong Kong Island to Britain?", a:"Treaty of Nanking", b:"Treaty of Peking", c:"A"},{q:"What is the function of the Angle Station?", a:"To change rope direction", b:"To let people off", c:"A"},{q:"What was the original name of Po Lin Monastery?", a:"The Big Hut", b:"The Stone Temple", c:"A"},{q:"When did Ngong Ping 360 open to the public?", a:"2006", b:"1997", c:"A"},{q:"Who was the Chinese official who banned Opium in HK?", a:"Lin Zexu", b:"Li Hongzhang", c:"A"},{q:"Where is the longest span between towers?", a:"Over Tung Chung Bay", b:"Nei Lak Shan", c:"A"},{q:"What is the frame inside the Buddha made of?", a:"Steel", b:"Wood", c:"A"},{q:"Which company provided the cable car technology?", a:"Leitner-Poma", b:"Disney", c:"A"},{q:"What is the altitude of Lantau Peak?", a:"934 meters", b:"500 meters", c:"A"},{q:"Who was the 'King of Kowloon' known for his calligraphy?", a:"Tsang Tsou-choi", b:"Jacky Chan", c:"A"},{q:"Which is the shortest tower in the system?", a:"Tower near the terminal", b:"The cross-sea tower", c:"A"},{q:"What is the 'Government House' formerly known as?", a:"Governor's Residence", b:"MTR HQ", c:"A"},{q:"How thick is the glass of the Crystal Cabin floor?", a:"Approx. 50mm", b:"Approx. 5mm", c:"A"},{q:"Where did the British first land in 1841?", a:"Possession Point", b:"Causeway Bay", c:"A"},{q:"Is the 'Bodhi Tree' in the Village real?", a:"Artificial", b:"Real", c:"A"},{q:"Who painted the murals at Shek Pik Reservoir?", a:"Prisoners", b:"Famous artists", c:"A"},{q:"How is the cable car rope joined into a loop?", a:"Splicing", b:"Welding", c:"A"},{q:"Which transport used to be on HK Island's slopes?", a:"Sedan Chairs", b:"Trams", c:"A"},{q:"What is the average speed of the cabin?", a:"5-7 meters per second", b:"50 meters per second", c:"A"},{q:"The Buddha's left hand on the knee represents...?", a:"Giving (Varada Mudra)", b:"Protection", c:"A"},{q:"How are Tai O's 'Salted Egg Yolks' made?", a:"Curing in salt", b:"Baking", c:"A"},{q:"When did HK return to China?", a:"1997", b:"1984", c:"A"},{q:"At what wind signal does the cable car stop?", a:"Signal No. 3 or above", b:"Only No. 8", c:"A"},{q:"What was 'Kowloon Walled City' known for?", a:"Being ungoverned", b:"Being a park", c:"A"},{q:"How long is the 'Walking with Buddha' show?", a:"Approx. 20 mins", b:"2 hours", c:"A"},{q:"What did Ngong Ping used to grow?", a:"Tea", b:"Rubber", c:"A"},{q:"Which street is famous for antiques?", a:"Hollywood Road", b:"Nathan Road", c:"A"},{q:"How many towers are in the system?", a:"8", b:"20", c:"A"},{q:"What is the origin of 'Lantau'?", a:"Broken Head (Cantonese)", b:"Green Mountain", c:"A"},{q:"Where is the cable car's rope made?", a:"Italy", b:"USA", c:"A"},{q:"What is inside the Buddha's head?", a:"Vents and structures", b:"Jewels", c:"A"},{q:"What were old converted minibuses called?", a:"Chicken Buses", b:"Duck Buses", c:"A"},{q:"Is the cable car system fully automated?", a:"Yes", b:"No", c:"A"},{q:"Which island is the largest in HK?", a:"Lantau", b:"HK Island", c:"A"},{q:"What does 'Po Lin' mean?", a:"Precious Lotus", b:"Big Temple", c:"A"},{q:"Where is the motor located?", a:"Tung Chung Terminal", b:"Ngong Ping Terminal", c:"A"},{q:"How long did the Big Buddha take to build?", a:"12 years", b:"1 year", c:"A"},{q:"What symbol is on the Buddha's chest?", a:"Swastika (Wan)", b:"Lotus", c:"A"},{q:"What is 'Lion Rock' a symbol of?", a:"HK Spirit", b:"The King", c:"A"},{q:"Which wood is the 'Wisdom Path' made of?", a:"African Rosewood", b:"Local Pine", c:"A"},{q:"Which coin has a flower-shaped edge?", a:"$2 / 20 cents", b:"$1", c:"A"},{q:"Is there a rescue motor in the system?", a:"Yes", b:"No", c:"A"}],
+        lv4: [{q:"The Buddha's internal steel frame is for...?", a:"Wind and vibration resistance", b:"Adding weight", c:"A"},{q:"What is the power of the main drive motor?", a:"Approx. 1600 kW", b:"Approx. 10 kW", c:"A"},{q:"The 'Great Clearance' order in Qing was against...?", a:"Koxinga's forces", b:"Tsunamis", c:"A"},{q:"What is the longest span length in meters?", a:"Approx. 1500m", b:"Approx. 500m", c:"A"},{q:"Geographically, what does 'Ngong Ping' mean?", a:"Highland Plain", b:"Deep Valley", c:"A"},{q:"Why is the Buddha facing North?", a:"To face China and HK", b:"Feng Shui luck", c:"A"},{q:"In which year was the first HK coin minted?", a:"1863", b:"1945", c:"A"},{q:"What is the max operating speed of the rope?", a:"7 m/s", b:"30 m/s", c:"A"},{q:"When was the name 'Ngong Ping 360' finalized?", a:"2005", b:"2000", c:"A"},{q:"What was Tai O's historical role?", a:"Salt production & fishing", b:"Silk weaving", c:"A"},{q:"Which Governor started the 'Ten-year Housing Plan'?", a:"Lord MacLehose", b:"Lord Wilson", c:"A"},{q:"Cable car stops if sustained wind speed reaches...?", a:"90 km/h", b:"30 km/h", c:"A"},{q:"What is the design life of the track rope?", a:"Approx. 30 years", b:"3 years", c:"A"},{q:"The Buddha's three-tier base represents...?", a:"Altar of Heaven / Ordination", b:"Three meals", c:"A"},{q:"Which treaty ceded Kowloon Peninsula?", a:"Convention of Peking", b:"Treaty of Nanking", c:"A"},{q:"What is the diameter of the 'Track Rope'?", a:"Approx. 70mm", b:"Approx. 10mm", c:"A"},{q:"Tai O was once known as the ______ of HK.", a:"Salt Store", b:"Sugar Mill", c:"A"},{q:"What type of roof is on the Village buildings?", a:"Grey tile (Tang style)", b:"Flat concrete", c:"A"},{q:"What was the 'Court of Final Appeal' building previously?", a:"Old Legislative Council", b:"Police Station", c:"A"},{q:"How is the angle station's machinery cooled?", a:"Natural ventilation", b:"Powerful A/C", c:"A"},{q:"How many bronze pieces make up the Buddha's face?", a:"It's part of 202 pieces total", b:"1 single piece", c:"A"},{q:"What was 'Lantau' originally called?", a:"Lan Tau (Broken Head)", b:"Sunset Hill", c:"A"},{q:"What were motorboats in Victoria Harbour called?", a:"Walla-Walla", b:"Ding-Ding", c:"A"},{q:"Does the cable car system have automated fault detection?", a:"Yes", b:"No", c:"A"},{q:"How high is Nei Lak Shan?", a:"751 meters", b:"200 meters", c:"A"},{q:"Which is the most 'popular' Taoist temple in HK?", a:"Wong Tai Sin", b:"Che Kung Miu", c:"A"},{q:"How many ropes are in a bi-cable system per side?", a:"2 (Track + Haul)", b:"1", c:"A"},{q:"Where is the 'Dharma Wheel' symbol on the Buddha?", a:"On the palms", b:"On the forehead", c:"A"},{q:"'White Sugar Sponge Cake' is also known as...?", a:"Luntau Cake", b:"Red Bean Cake", c:"A"},{q:"How do cabins move inside the stations?", a:"Conveyor/Tire drive", b:"Inertia", c:"A"},{q:"What was 'Tung Chung' called in ancient times?", a:"Tung Lung Hau", b:"Sai Kung", c:"A"},{q:"When was HK occupied by Japan (Black Christmas)?", a:"1941", b:"1997", c:"A"},{q:"How many rescue motors are in the system?", a:"Multiple (Redundant)", b:"1", c:"A"},{q:"The Buddha's lotus petals are joined by...?", a:"Bolting and welding", b:"Glue", c:"A"},{q:"What is the oldest lighthouse in Hong Kong?", a:"Cape D'Aguilar", b:"Green Island", c:"A"},{q:"How were the cable towers built on steep slopes?", a:"Helicopters or manually", b:"Cranes", c:"A"},{q:"Who is the 'God of Water' in Tai O?", a:"Yeung Hau", b:"Kwan Tai", c:"A"},{q:"What was the old 'Silver Dollar' in HK called?", a:"Mexican Dollar", b:"US Dollar", c:"A"},{q:"What is the diameter of the station bullwheel?", a:"Approx. 6 meters", b:"Approx. 1 meter", c:"A"},{q:"What is inside the Buddha's base levels?", a:"Exhibition halls", b:"Parking", c:"A"},{q:"What color is the 'Lantau Taxi'?", a:"Blue", b:"Red", c:"A"},{q:"Ngong Ping 360 was Asia's first to use...?", a:"Bi-cable ropeway tech", b:"Maglev", c:"A"},{q:"Why is 'Mui Wo' named so?", a:"Terrain looks like a plum blossom", b:"Bird's nest", c:"A"},{q:"Where was the old HK sugar refinery located?", a:"Taikoo", b:"Central", c:"A"},{q:"Where do cabins stop during an emergency stop?", a:"On the rope", b:"Always at stations", c:"A"},{q:"How long are the Buddha's earlobes?", a:"Approx. 2 meters", b:"10 cm", c:"A"},{q:"Who was the 'King of Kowloon'?", a:"Tsang Tsou-choi", b:"Li Ka-shing", c:"A"},{q:"Approximate construction cost of the system?", a:"HK$1 billion", b:"HK$100 million", c:"A"},{q:"When was the Shek Pik Reservoir completed?", a:"1963", b:"1997", c:"A"},{q:"Which railway used to have a 'Narrow Gauge'?", a:"Sha Tau Kok Railway", b:"East Rail", c:"A"}]
+    }
+};
+
+// 合併英文題庫
+POOL.en = POOL_EN_EXTENDED.en;
+
+// 補全每個難度至50題 (確保平衡隨機抽取)
+function fillPool() {
+    for (let lang of ['zh', 'en']) {
+        for (let lv of ['lv1', 'lv2', 'lv3', 'lv4']) {
+            while (POOL[lang][lv].length < 50) {
+                let i = POOL[lang][lv].length + 1;
+                POOL[lang][lv].push({q:`[${lang.toUpperCase()}-${lv}] 補充知識 ${i}`, a:"正確選項", b:"錯誤選項", c:"A"});
+            }
+        }
+    }
+}
+fillPool();
+
+// ---------- 核心修正: 動態平衡答案分布 (使A/B比例接近1:1) ----------
+function balanceAnswersGlobally() {
+    for (let lang of ['zh', 'en']) {
+        for (let lv of ['lv1', 'lv2', 'lv3', 'lv4']) {
+            const questions = POOL[lang][lv];
+            for (let q of questions) {
+                // 根據原始正確內容 (原c標記的正確文本) 隨機重組選項順序
+                const originalCorrectText = (q.c === 'A') ? q.a : q.b;
+                const originalWrongText = (q.c === 'A') ? q.b : q.a;
+                // 50% 機率交換 (讓正確答案均勻分佈在A/B)
+                if (Math.random() < 0.5) {
+                    q.a = originalWrongText;
+                    q.b = originalCorrectText;
+                    q.c = 'B';
+                } else {
+                    q.a = originalCorrectText;
+                    q.b = originalWrongText;
+                    q.c = 'A';
+                }
+            }
+        }
+    }
+}
+balanceAnswersGlobally();
+
+// --------------------------------------------------------------
+// 3. 全域遊戲邏輯 (完整保留流暢機制)
+// --------------------------------------------------------------
+let g = {
+    idx: 0, score: 0, activeQs: [], timer: null, timeLeft: 0, totalT: 0,
+    paused: false, lang: 'zh', answered: false, bufferInterval: null
+};
+
+function clearBufferTimer() { if (g.bufferInterval) { clearInterval(g.bufferInterval); g.bufferInterval = null; } }
+function showPrize() { g.paused = true; if (g.timer) clearInterval(g.timer); clearBufferTimer(); document.getElementById('scrPrize').style.display = 'flex'; }
+function closePrize() { document.getElementById('scrPrize').style.display = 'none'; g.paused = false; document.getElementById('scrGame').classList.remove('active'); runBuffer(); }
+function showEnd() { document.getElementById('scrGame').classList.remove('active'); document.getElementById('scrEnd').classList.add('active'); document.getElementById('endScore').innerText = g.score; document.getElementById('endPrize').innerText = Math.floor(g.score / 5); }
+
+function checkAnswer(selected) {
+    if (g.answered || g.idx >= 20) return;
+    g.answered = true;
+    if (g.timer) { clearInterval(g.timer); g.timer = null; }
+    const q = g.activeQs[g.idx];
+    const isCorrect = (selected === q.c);
+    if (isCorrect) { g.score++; document.getElementById('uiScore').innerText = g.score; }
+    const optADiv = document.getElementById('optA'), optBDiv = document.getElementById('optB');
+    optADiv.classList.remove('correct', 'wrong'); optBDiv.classList.remove('correct', 'wrong');
+    if (q.c === 'A') { optADiv.classList.add('correct'); optBDiv.classList.add('wrong'); } 
+    else { optBDiv.classList.add('correct'); optADiv.classList.add('wrong'); }
+    setTimeout(() => {
+        g.idx++; g.answered = false;
+        document.getElementById('mainProgress').style.width = (g.idx / 20 * 100) + "%";
+        if (g.idx === 20) showEnd();
+        else {
+            if (g.idx % 5 === 0 && g.idx < 20) showPrize();
+            else { document.getElementById('scrGame').classList.remove('active'); runBuffer(); }
+        }
+    }, 1500);
+}
+
+function startClock() {
+    const ring = document.getElementById('timerRing'), txt = document.getElementById('timerText');
+    if (g.timer) clearInterval(g.timer);
+    g.timer = setInterval(() => {
+        if (!g.paused && !g.answered) {
+            g.timeLeft -= 0.1;
+            const displaySec = Math.ceil(g.timeLeft);
+            txt.innerText = displaySec;
+            const circumference = 691;
+            let offset = circumference - (circumference * (g.timeLeft / g.totalT));
+            if (offset < 0) offset = 0;
+            ring.style.strokeDashoffset = offset;
+            if (g.timeLeft <= 3) { ring.style.stroke = "var(--danger)"; txt.style.color = "var(--danger)"; txt.classList.add('timer-danger-anim'); }
+            else if (g.timeLeft <= g.totalT / 2) { ring.style.stroke = "var(--warning)"; txt.style.color = "var(--warning)"; txt.classList.remove('timer-danger-anim'); }
+            else { ring.style.stroke = "var(--accent)"; txt.style.color = "var(--accent)"; txt.classList.remove('timer-danger-anim'); }
+            if (g.timeLeft <= 0) { clearInterval(g.timer); g.timer = null; if (!g.answered) checkAnswer(''); }
+        }
+    }, 100);
+}
+
+function displayCurrentQuestion() {
+    const q = g.activeQs[g.idx];
+    document.getElementById('qDisplay').innerText = q.q;
+    document.getElementById('optA').innerHTML = `A: ${q.a}`;
+    document.getElementById('optB').innerHTML = `B: ${q.b}`;
+    document.getElementById('optA').classList.remove('correct', 'wrong');
+    document.getElementById('optB').classList.remove('correct', 'wrong');
+    const level = Math.floor(g.idx / 5) + 1;
+    let baseTime = level === 1 ? 13 : level === 2 ? 11 : level === 3 ? 9 : 7;
+    g.totalT = baseTime; g.timeLeft = g.totalT;
+    const ring = document.getElementById('timerRing'); ring.style.strokeDashoffset = 0;
+    const txt = document.getElementById('timerText'); txt.innerText = g.totalT; txt.style.color = "var(--accent)"; txt.classList.remove('timer-danger-anim');
+    startClock();
+}
+
+function runBuffer() {
+    if (g.idx >= 20) return;
+    clearBufferTimer();
+    const scrBuffer = document.getElementById('scrBuffer'), bufferNum = document.getElementById('bufferNum');
+    scrBuffer.classList.add('active');
+    let count = 5; bufferNum.innerText = count;
+    g.bufferInterval = setInterval(() => {
+        if (!g.paused) { count--; bufferNum.innerText = count; if (count <= 0) { clearBufferTimer(); scrBuffer.classList.remove('active'); document.getElementById('scrGame').classList.add('active'); document.getElementById('uiIdx').innerText = g.idx+1; displayCurrentQuestion(); } }
+    }, 1000);
+}
+
+function bindOptions() {
+    const optA = document.getElementById('optA'), optB = document.getElementById('optB');
+    const handlerA = () => { if (!g.answered && !g.paused) checkAnswer('A'); };
+    const handlerB = () => { if (!g.answered && !g.paused) checkAnswer('B'); };
+    optA.removeEventListener('click', optA._hdl); optB.removeEventListener('click', optB._hdl);
+    optA._hdl = handlerA; optB._hdl = handlerB;
+    optA.addEventListener('click', handlerA); optB.addEventListener('click', handlerB);
+}
+
+function initGame(lang) {
+    if (g.timer) clearInterval(g.timer); clearBufferTimer();
+    g.paused = false; g.answered = false; g.idx = 0; g.score = 0; g.lang = lang;
+    document.getElementById('uiScore').innerText = "0"; document.getElementById('mainProgress').style.width = "0%";
+    const p = POOL[lang];
+    const shuffle = (arr, n) => [...arr].sort(() => 0.5 - Math.random()).slice(0, n);
+    g.activeQs = [...shuffle(p.lv1,5), ...shuffle(p.lv2,5), ...shuffle(p.lv3,5), ...shuffle(p.lv4,5)];
+    document.getElementById('scrStart').classList.remove('active');
+    document.getElementById('scrEnd').classList.remove('active');
+    document.getElementById('scrPrize').style.display = 'none';
+    document.getElementById('uiCtrls').style.display = 'flex';
+    bindOptions();
+    runBuffer();
+}
+
+function togglePause() { g.paused = !g.paused; document.getElementById('pauseBtn').innerText = g.paused ? "▶️ 繼續遊戲" : "⏸️ 暫停遊戲"; }
+document.addEventListener('DOMContentLoaded', () => { document.getElementById('pauseBtn').onclick = togglePause; });
+</script>
+</body>
+</html>
