@@ -442,7 +442,7 @@ const POOL_EN_BASE = {
       {q:"Which ferry connects Central and Tsim Sha Tsui?", a:"TurboJET", b:"Star Ferry", c:"B"},
       {q:"What is a popular tea-time drink in HK?", a:"Coffee", b:"Silk Stocking Milk Tea", c:"B"},
       {q:"What is the diameter of the haul rope?", a:"Approx. 500mm", b:"Approx. 50mm", c:"B"},
-      {q:"Which park does the cable car fly over?", a:"Ocean Park", b:"North Lantau Country Park", c:"B"},
+      {q:"Which NP360 park does the cable car fly over?", a:"Ocean Park", b:"North Lantau Country Park", c:"B"},
       {q:"Is the cable car system eco-friendly?", a:"No", b:"Yes (Electric powered)", c:"B"},
       {q:"What is the name of the oldest street in HK?", a:"Nathan Road", b:"Hollywood Road", c:"B"},
       {q:"What do the 'Stilt Houses' protect against?", a:"Wild animals", b:"High tides", c:"B"},
@@ -641,7 +641,10 @@ function showPrize() {
 function closePrize() { 
     document.getElementById('scrPrize').style.display = 'none'; 
     gameState.paused = false; 
-    document.getElementById('scrGame').classList.remove('active'); 
+    gameState.questionEnded = false;      // 確保題目未結束
+    gameState.awaitingAnswerPopup = false; // 確保無彈窗阻擋
+    // 隱藏遊戲畫面，避免與緩衝畫面衝突
+    document.getElementById('scrGame').classList.remove('active');
     runBuffer(); 
 }
 function showEnd() { 
@@ -665,7 +668,7 @@ function showAnswerPopup() {
     const q = gameState.activeQs[gameState.idx];
     const correctLetter = q.c;
     const correctText = (correctLetter === 'A') ? q.a : q.b;
-    const answerDisplay = `✅ 正确答案：${correctLetter}. ${correctText}`;
+    const answerDisplay = `✅ ：${correctLetter}. ${correctText}`;
     document.getElementById('answerText').innerHTML = answerDisplay;
     document.getElementById('answerPopup').style.display = 'flex';
     gameState.awaitingAnswerPopup = true;
@@ -729,25 +732,38 @@ function loadCurrentQuestion() {
 }
 
 function startClockForCurrent() {
-    if (gameState.timer) clearInterval(gameState.timer);
+    // 徹底清除舊計時器
+    if (gameState.timer) {
+        clearInterval(gameState.timer);
+        gameState.timer = null;
+    }
+    // 若題目已結束或正在顯示答案彈窗，不啟動計時器
+    if (gameState.questionEnded || gameState.awaitingAnswerPopup) {
+        return;
+    }
+    
     const level = Math.floor(gameState.idx / 5) + 1;
     let baseTime = level === 1 ? 13 : level === 2 ? 11 : level === 3 ? 9 : 7;
     gameState.totalT = baseTime;
     gameState.timeLeft = gameState.totalT;
-    const ring = document.getElementById('timerRing'), txt = document.getElementById('timerText');
+    
+    const ring = document.getElementById('timerRing');
+    const txt = document.getElementById('timerText');
+    const circumference = 691;
     ring.style.strokeDashoffset = 0;
     txt.innerText = gameState.totalT;
     txt.style.color = "var(--accent)";
     txt.classList.remove('timer-danger-anim');
+    
     gameState.timer = setInterval(() => {
         if (!gameState.paused && !gameState.questionEnded && !gameState.awaitingAnswerPopup) {
             gameState.timeLeft -= 0.1;
             const displaySec = Math.ceil(gameState.timeLeft);
             txt.innerText = displaySec;
-            const circumference = 691;
             let offset = circumference - (circumference * (gameState.timeLeft / gameState.totalT));
             if (offset < 0) offset = 0;
             ring.style.strokeDashoffset = offset;
+            
             if (gameState.timeLeft <= 3) {
                 ring.style.stroke = "var(--danger)";
                 txt.style.color = "var(--danger)";
@@ -761,6 +777,7 @@ function startClockForCurrent() {
                 txt.style.color = "var(--accent)";
                 txt.classList.remove('timer-danger-anim');
             }
+            
             if (gameState.timeLeft <= 0 && !gameState.questionEnded && !gameState.awaitingAnswerPopup) {
                 clearInterval(gameState.timer);
                 gameState.timer = null;
@@ -772,11 +789,21 @@ function startClockForCurrent() {
 
 function runBuffer() {
     if (gameState.idx >= 20) return;
+    // 清除所有可能殘留的計時器
+    if (gameState.timer) {
+        clearInterval(gameState.timer);
+        gameState.timer = null;
+    }
     clearBufferTimer();
-    const scrBuffer = document.getElementById('scrBuffer'), bufferNum = document.getElementById('bufferNum');
+    // 確保遊戲畫面非活動狀態
+    document.getElementById('scrGame').classList.remove('active');
+    
+    const scrBuffer = document.getElementById('scrBuffer');
+    const bufferNum = document.getElementById('bufferNum');
     scrBuffer.classList.add('active');
     let count = 5;
     bufferNum.innerText = count;
+    
     gameState.bufferInterval = setInterval(() => {
         if (!gameState.paused) {
             count--;
