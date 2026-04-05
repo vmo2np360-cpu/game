@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NP360知識王者挑戰｜昂坪360問答遊戲</title>
+    <title>昂坪360問答遊戲</title>
     <style>
         :root {
             --bg: #050a10;
@@ -34,9 +34,10 @@
         @keyframes shake { 0% { transform: translate(-52%, -50%); } 50% { transform: translate(-48%, -50%); } 100% { transform: translate(-50%, -50%); } }
 
         #qDisplay { font-size: 4.5rem; margin: 20px 0; min-height: 250px; display: flex; align-items: center; line-height: 1.2; padding: 0 40px; font-weight: 600; text-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; width: 95%; max-width: 1600px; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; width: 95%; max-width: 1600px; margin-bottom: 30px; }
         .opt-btn { padding: 70px 30px; font-size: 3.8rem; background: var(--glass); border: 6px solid rgba(255,255,255,0.1); border-radius: 50px; transition: 0.2s; font-weight: 900; cursor: pointer; backdrop-filter: blur(4px); }
         .opt-btn:active { transform: scale(0.97); }
+        .opt-btn.disabled-opt { pointer-events: none; opacity: 0.6; }
         .correct { background: #00e676 !important; color: #000; border-color: #fff; transform: scale(1.02); box-shadow: 0 0 35px #00e676; }
         .wrong { background: var(--danger) !important; opacity: 0.5; filter: grayscale(0.2); }
 
@@ -47,6 +48,15 @@
 
         .prize-popup { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 2000; display: none; flex-direction: column; justify-content: center; align-items: center; }
         .prize-card { background: var(--warning); color: #000; padding: 80px 120px; border-radius: 60px; font-size: 6rem; font-weight: 900; box-shadow: 0 0 100px var(--warning); animation: bounce 0.6s; }
+
+        .answer-popup { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2100; display: none; flex-direction: column; justify-content: center; align-items: center; }
+        .answer-card { background: linear-gradient(135deg, #1e2a3a, #0f172a); border: 3px solid var(--accent); border-radius: 60px; padding: 60px 100px; text-align: center; box-shadow: 0 0 60px rgba(0,242,255,0.3); animation: fadeInUp 0.4s ease; }
+        .answer-card h2 { font-size: 4rem; margin: 0 0 20px 0; color: var(--accent); }
+        .answer-card p { font-size: 3rem; margin: 20px 0; font-weight: bold; background: rgba(255,255,255,0.1); padding: 30px; border-radius: 50px; }
+        .answer-card button { padding: 20px 60px; font-size: 2rem; background: var(--accent); color: #000; border: none; border-radius: 50px; margin-top: 30px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .answer-card button:hover { transform: scale(1.05); background: #fff; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes bounce { 0% { transform: scale(0.7); opacity: 0; } 80% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
         @media (max-width: 900px) {
@@ -58,6 +68,9 @@
             #timerText { font-size: 5rem; }
             .start-btn { padding: 20px 50px; font-size: 2rem; }
             .prize-card { padding: 40px 60px; font-size: 3.5rem; }
+            .answer-card { padding: 30px 40px; }
+            .answer-card h2 { font-size: 2.5rem; }
+            .answer-card p { font-size: 2rem; }
         }
     </style>
 </head>
@@ -74,12 +87,12 @@
     <div id="scrStart" class="screen active">
         <h1 style="font-size: 7rem; color: var(--accent); margin-bottom: 10px;">🏆 NP360知識王者挑戰</h1>
         <h1 style="font-size: 7rem; color: var(--accent); margin-bottom: 10px;">NP360 Quiz King Challenge</h1>
-        <p style="font-size: 2rem; letter-spacing: 8px; margin-bottom: 60px; opacity: 0.8;">答中問題 獲得獎勵 Get it right and win a prize!</p>
+        <p style="font-size: 2rem; letter-spacing: 8px; margin-bottom: 60px; opacity: 0.8;">歡迎參加 Welcome to Join</p>
         <div>
             <button class="start-btn" style="background: var(--danger); color: white;" onclick="initGame('zh')">中文</button>
             <button class="start-btn" style="background: #2196f3; color: white;" onclick="initGame('en')">English</button>
         </div>
-        <h2 style="margin-top: 60px; font-size: 1.2rem; opacity:0.6;">歡迎參加 Welcome to Join</h2>
+        <h2 style="margin-top: 60px; font-size: 1.2rem; opacity:0.6;">For Fun</h2>
     </div>
 
     <!-- 緩衝倒數畫面 -->
@@ -89,7 +102,7 @@
         <div id="bufferNum" class="buffer-num">5</div>
     </div>
 
-    <!-- 遊戲主畫面 (已移除累計得分區塊) -->
+    <!-- 遊戲主畫面 (無手動按鈕) -->
     <div id="scrGame" class="screen">
         <div style="position:absolute; top:40px; left:50px; font-size:2.5rem; font-weight:bold; background: rgba(0,0,0,0.5); padding: 8px 25px; border-radius: 60px;">
             📍 第 <span id="uiIdx">1</span> / 20 題
@@ -109,29 +122,36 @@
             <div id="optA" class="opt-btn">A</div>
             <div id="optB" class="opt-btn">B</div>
         </div>
-        
-        <!-- 原累計得分區塊已完全刪除，不顯示任何分數 -->
     </div>
 
-    <!-- 獎勵彈窗 (保留) -->
+    <!-- 答案彈窗 (倒數結束時顯示) -->
+    <div id="answerPopup" class="answer-popup">
+        <div class="answer-card">
+            <h2>📢 答案 Answer</h2>
+            <p id="answerText">正確答案</p>
+            <button id="nextFromAnswerBtn">下一題 ➡</button>
+        </div>
+    </div>
+
+    <!-- 獎勵彈窗 -->
     <div id="scrPrize" class="prize-popup">
         <div class="prize-card">🎁 獎勵 Award +1</div>
         <button class="start-btn" style="background:#fff; color:#000; margin-top:80px;" onclick="closePrize()">✨ 領取並繼續</button>
     </div>
 
-    <!-- 完賽畫面 (已移除總得分及獲得獎品顯示) -->
+    <!-- 完賽畫面 -->
     <div id="scrEnd" class="screen">
         <h1 style="font-size: 8rem; color: var(--accent);">🏁 完賽!</h1>
         <div style="font-size: 3.5rem; background: rgba(255,255,255,0.05); padding: 50px 80px; border-radius: 50px; margin-bottom: 30px;">
             🎉 感謝你的參與！Thank you for participating !<br>
-            ✨ 你已完成所有挑戰 All challenges completed✨
+            ✨ 你已完成所有挑戰 All challenges completed. ✨
         </div>
         <button class="start-btn" style="background:var(--accent); color:#000;" onclick="location.reload()">🏠 回主頁</button>
     </div>
 
 <script>
 // --------------------------------------------------------------
-// 完整題庫 (中英文豐富知識)
+// 完整題庫 (中文+英文)
 // --------------------------------------------------------------
 const POOL = {
     zh: {
@@ -239,7 +259,7 @@ const POOL = {
       {q:"香港故事：哪裡被稱為「購物天堂」？", a:"大澳", b:"銅鑼灣/尖沙咀", c:"B"},
       {q:"昂坪 360 每年會停駛保養嗎？", a:"不會", b:"會", c:"B"}
     ],
-    "lv3": [
+     "lv3": [
       {q:"昂坪 360 纜車的建設使用了哪種動物協助？", a:"駱駝", b:"騾子", c:"B"},
       {q:"天壇大佛是由什麼金屬鑄造的？", a:"黃金", b:"青銅", c:"B"},
       {q:"香港故事：哪年新界被租借給英國？", a:"1841年", b:"1898年", c:"B"},
@@ -346,8 +366,8 @@ const POOL = {
   },
 };
 
-// 英文題庫（豐富完整版本）
-const POOL_EN_EXTENDED = {
+// 英文題庫
+const POOL_EN_BASE = {
     en: {
 "lv1": [
       {q:"Ngong Ping 360 connects Tung Chung with which place?", a:"Tai O", b:"Ngong Ping", c:"B"},
@@ -452,24 +472,133 @@ const POOL_EN_EXTENDED = {
       {q:"What kind of tea is grown in Ngong Ping?", a:"Oolong Tea", b:"Lotus Tea", c:"B"},
       {q:"Which trail is good for watching the sunrise?", a:"Victoria Peak", b:"Lantau Peak", c:"B"},
       {q:"Who manages Ngong Ping 360?", a:"KMB", b:"MTR Corporation", c:"B"}
+    ],
+    "lv3": [
+      {q:"What animal was used to carry materials for the construction?", a:"Camels", b:"Mules", c:"B"},
+      {q:"What is the Big Buddha made of?", a:"Gold", b:"Bronze", c:"B"},
+      {q:"In which year was the 'New Territories' leased to Britain?", a:"1841", b:"1898", c:"B"},
+      {q:"What is the total length of the cable car ride?", a:"10 km", b:"5.7 km", c:"B"},
+      {q:"When did the first Cross-Harbour Tunnel open?", a:"1997", b:"1972", c:"B"},
+      {q:"Which rope supports the cabin's weight in the system?", a:"Haul Rope", b:"Track Rope", c:"B"},
+      {q:"The Buddha's base is modeled after which place in Beijing?", a:"Forbidden City", b:"Temple of Heaven", c:"B"},
+      {q:"Why was the 'Silvermine Cave' closed?", a:"No more silver", b:"Structural risks", c:"B"},
+      {q:"Which treaty ceded Hong Kong Island to Britain?", a:"Treaty of Peking", b:"Treaty of Nanking", c:"B"},
+      {q:"What is the function of the Angle Station?", a:"To let people off", b:"To change rope direction", c:"B"},
+      {q:"What was the original name of Po Lin Monastery?", a:"The Stone Temple", b:"The Big Hut", c:"B"},
+      {q:"When did Ngong Ping 360 open to the public?", a:"1997", b:"2006", c:"B"},
+      {q:"Who was the Chinese official who banned Opium in HK?", a:"Li Hongzhang", b:"Lin Zexu", c:"B"},
+      {q:"Where is the longest span between towers?", a:"Nei Lak Shan", b:"Over Tung Chung Bay", c:"B"},
+      {q:"What is the frame inside the Buddha made of?", a:"Wood", b:"Steel", c:"B"},
+      {q:"Which company provided the cable car technology?", a:"Disney", b:"Leitner-Poma", c:"B"},
+      {q:"What is the altitude of Lantau Peak?", a:"500 meters", b:"934 meters", c:"B"},
+      {q:"Who was the 'King of Kowloon' known for his calligraphy?", a:"Jacky Chan", b:"Tsang Tsou-choi", c:"B"},
+      {q:"Which is the shortest tower in the system?", a:"The cross-sea tower", b:"Tower near the terminal", c:"B"},
+      {q:"What is the 'Government House' formerly known as?", a:"MTR HQ", b:"Governor's Residence", c:"B"},
+      {q:"How thick is the glass of the Crystal Cabin floor?", a:"Approx. 5mm", b:"Approx. 50mm", c:"B"},
+      {q:"Where did the British first land in 1841?", a:"Causeway Bay", b:"Possession Point", c:"B"},
+      {q:"Is the 'Bodhi Tree' in the Village real?", a:"Real", b:"Artificial", c:"B"},
+      {q:"Who painted the murals at Shek Pik Reservoir?", a:"Famous artists", b:"Prisoners", c:"B"},
+      {q:"How is the cable car rope joined into a loop?", a:"Welding", b:"Splicing", c:"B"},
+      {q:"Which transport used to be on HK Island's slopes?", a:"Trams", b:"Sedan Chairs", c:"B"},
+      {q:"What is the average speed of the cabin?", a:"50 meters per second", b:"5-7 meters per second", c:"B"},
+      {q:"The Buddha's left hand on the knee represents...?", a:"Protection", b:"Giving (Varada Mudra)", c:"B"},
+      {q:"How are Tai O's 'Salted Egg Yolks' made?", a:"Baking", b:"Curing in salt", c:"B"},
+      {q:"When did HK return to China?", a:"1984", b:"1997", c:"B"},
+      {q:"At what wind signal does the cable car stop?", a:"Only No. 8", b:"Signal No. 3 or above", c:"B"},
+      {q:"What was 'Kowloon Walled City' known for?", a:"Being a park", b:"Being ungoverned", c:"B"},
+      {q:"How long is the 'Walking with Buddha' show?", a:"2 hours", b:"Approx. 20 mins", c:"B"},
+      {q:"What did Ngong Ping used to grow?", a:"Rubber", b:"Tea", c:"B"},
+      {q:"Which street is famous for antiques?", a:"Nathan Road", b:"Hollywood Road", c:"B"},
+      {q:"How many towers are in the system?", a:"20", b:"8", c:"B"},
+      {q:"What is the origin of 'Lantau'?", a:"Green Mountain", b:"Broken Head (Cantonese)", c:"B"},
+      {q:"Where is the cable car's rope made?", a:"USA", b:"Italy", c:"B"},
+      {q:"What is inside the Buddha's head?", a:"Jewels", b:"Vents and structures", c:"B"},
+      {q:"What were old converted minibuses called?", a:"Duck Buses", b:"Chicken Buses", c:"B"},
+      {q:"Is the cable car system fully automated?", a:"No", b:"Yes", c:"B"},
+      {q:"Which island is the largest in HK?", a:"HK Island", b:"Lantau", c:"B"},
+      {q:"What does 'Po Lin' mean?", a:"Big Temple", b:"Precious Lotus", c:"B"},
+      {q:"Where is the motor located?", a:"Ngong Ping Terminal", b:"Tung Chung Terminal", c:"B"},
+      {q:"How long did the Big Buddha take to build?", a:"1 year", b:"12 years", c:"B"},
+      {q:"What symbol is on the Buddha's chest?", a:"Lotus", b:"Swastika (Wan)", c:"B"},
+      {q:"What is 'Lion Rock' a symbol of?", a:"The King", b:"HK Spirit", c:"B"},
+      {q:"Which wood is the 'Wisdom Path' made of?", a:"Local Pine", b:"African Rosewood", c:"B"},
+      {q:"Which coin has a flower-shaped edge?", a:"$1", b:"$2 / 20 cents", c:"B"},
+      {q:"Is there a rescue motor in the system?", a:"No", b:"Yes", c:"B"}
+    ],
+    "lv4": [
+      {q:"The Buddha's internal steel frame is for...?", a:"Adding weight", b:"Wind and vibration resistance", c:"B"},
+      {q:"What is the power of the main drive motor?", a:"Approx. 10 kW", b:"Approx. 1600 kW", c:"B"},
+      {q:"The 'Great Clearance' order in Qing was against...?", a:"Tsunamis", b:"Koxinga's forces", c:"B"},
+      {q:"What is the longest span length in meters?", a:"Approx. 500m", b:"Approx. 1500m", c:"B"},
+      {q:"Geographically, what does 'Ngong Ping' mean?", a:"Deep Valley", b:"Highland Plain", c:"B"},
+      {q:"Why is the Buddha facing North?", a:"Feng Shui luck", b:"To face China and HK", c:"B"},
+      {q:"In which year was the first HK coin minted?", a:"1945", b:"1863", c:"B"},
+      {q:"What is the max operating speed of the rope?", a:"30 m/s", b:"7 m/s", c:"B"},
+      {q:"When was the name 'Ngong Ping 360' finalized?", a:"2000", b:"2005", c:"B"},
+      {q:"What was Tai O's historical role?", a:"Silk weaving", b:"Salt production & fishing", c:"B"},
+      {q:"Which Governor started the 'Ten-year Housing Plan'?", a:"Lord Wilson", b:"Lord MacLehose", c:"B"},
+      {q:"Cable car stops if sustained wind speed reaches...?", a:"30 km/h", b:"90 km/h", c:"B"},
+      {q:"What is the design life of the track rope?", a:"3 years", b:"Approx. 30 years", c:"B"},
+      {q:"The Buddha's three-tier base represents...?", a:"Three meals", b:"Altar of Heaven / Ordination", c:"B"},
+      {q:"Which treaty ceded Kowloon Peninsula?", a:"Treaty of Nanking", b:"Convention of Peking", c:"B"},
+      {q:"What is the diameter of the 'Track Rope'?", a:"Approx. 10mm", b:"Approx. 70mm", c:"B"},
+      {q:"Tai O was once known as the ______ of HK.", a:"Sugar Mill", b:"Salt Store", c:"B"},
+      {q:"What type of roof is on the Village buildings?", a:"Flat concrete", b:"Grey tile (Tang style)", c:"B"},
+      {q:"What was the 'Court of Final Appeal' building previously?", a:"Police Station", b:"Old Legislative Council", c:"B"},
+      {q:"How is the angle station's machinery cooled?", a:"Powerful A/C", b:"Natural ventilation", c:"B"},
+      {q:"How many bronze pieces make up the Buddha's face?", a:"1 single piece", b:"It's part of 202 pieces total", c:"B"},
+      {q:"What was 'Lantau' originally called?", a:"Sunset Hill", b:"Lan Tau (Broken Head)", c:"B"},
+      {q:"What were motorboats in Victoria Harbour called?", a:"Ding-Ding", b:"Walla-Walla", c:"B"},
+      {q:"Does the cable car system have automated fault detection?", a:"No", b:"Yes", c:"B"},
+      {q:"How high is Nei Lak Shan?", a:"200 meters", b:"751 meters", c:"B"},
+      {q:"Which is the most 'popular' Taoist temple in HK?", a:"Che Kung Miu", b:"Wong Tai Sin", c:"B"},
+      {q:"How many ropes are in a bi-cable system per side?", a:"1", b:"2 (Track + Haul)", c:"B"},
+      {q:"Where is the 'Dharma Wheel' symbol on the Buddha?", a:"On the forehead", b:"On the palms", c:"B"},
+      {q:"'White Sugar Sponge Cake' is also known as...?", a:"Red Bean Cake", b:"Luntau Cake", c:"B"},
+      {q:"How do cabins move inside the stations?", a:"Inertia", b:"Conveyor/Tire drive", c:"B"},
+      {q:"What was 'Tung Chung' called in ancient times?", a:"Sai Kung", b:"Tung Lung Hau", c:"B"},
+      {q:"When was HK occupied by Japan (Black Christmas)?", a:"1997", b:"1941", c:"B"},
+      {q:"How many rescue motors are in the system?", a:"1", b:"Multiple (Redundant)", c:"B"},
+      {q:"The Buddha's lotus petals are joined by...?", a:"Glue", b:"Bolting and welding", c:"B"},
+      {q:"What is the oldest lighthouse in Hong Kong?", a:"Green Island", b:"Cape D'Aguilar", c:"B"},
+      {q:"How were the cable towers built on steep slopes?", a:"Cranes", b:"Helicopters or manually", c:"B"},
+      {q:"Who is the 'God of Water' in Tai O?", a:"Kwan Tai", b:"Yeung Hau", c:"B"},
+      {q:"What was the old 'Silver Dollar' in HK called?", a:"US Dollar", b:"Mexican Dollar", c:"B"},
+      {q:"What is the diameter of the station bullwheel?", a:"Approx. 1 meter", b:"Approx. 6 meters", c:"B"},
+      {q:"What is inside the Buddha's base levels?", a:"Parking", b:"Exhibition halls", c:"B"},
+      {q:"What color is the 'Lantau Taxi'?", a:"Red", b:"Blue", c:"B"},
+      {q:"Ngong Ping 360 was Asia's first to use...?", a:"Maglev", b:"Bi-cable ropeway tech", c:"B"},
+      {q:"Why is 'Mui Wo' named so?", a:"Bird's nest", b:"Terrain looks like a plum blossom", c:"B"},
+      {q:"Where was the old HK sugar refinery located?", a:"Central", b:"Taikoo", c:"B"},
+      {q:"Where do cabins stop during an emergency stop?", a:"Always at stations", b:"On the rope", c:"B"},
+      {q:"How long are the Buddha's earlobes?", a:"10 cm", b:"Approx. 2 meters", c:"B"},
+      {q:"Who was the 'King of Kowloon'?", a:"Li Ka-shing", b:"Tsang Tsou-choi", c:"B"},
+      {q:"Approximate construction cost of the system?", a:"HK$100 million", b:"HK$1 billion", c:"B"},
+      {q:"When was the Shek Pik Reservoir completed?", a:"1997", b:"1963", c:"B"},
+      {q:"Which railway used to have a 'Narrow Gauge'?", a:"East Rail", b:"Sha Tau Kok Railway", c:"B"}
     ]
   }
 };
-// 合併英文題庫完整四個難度
-POOL.en = POOL_EN_EXTENDED.en;
-// 補足lv3 lv4 (使用lv2複製擴充保證長度)
-for (let lv of ['lv3','lv4']) { POOL.en[lv] = POOL.en.lv2.slice(0,50); }
 
-function fillPool() {
+POOL.en = {
+    lv1: POOL_EN_BASE.en.lv1,
+    lv2: POOL_EN_BASE.en.lv2,
+    lv3: POOL_EN_BASE.en.lv3,   // 使用真正的 lv3 題庫
+    lv4: POOL_EN_BASE.en.lv4    // 使用真正的 lv4 題庫
+};
+function fillAllPools() {
     for (let lang of ['zh', 'en']) {
-        for (let lv of ['lv1', 'lv2', 'lv3', 'lv4']) {
-            while (POOL[lang][lv].length < 50) {
-                POOL[lang][lv].push({q:`Bonus Knowledge`, a:"Option A", b:"Option B", c:"A"});
-            }
+        for (let lv of ['lv1', 'lv2']) {
+            while (POOL[lang][lv].length < 50) POOL[lang][lv].push(POOL[lang][lv][0]);
+        }
+        for (let lv of ['lv3', 'lv4']) {
+            if (!POOL[lang][lv]) POOL[lang][lv] = [...POOL[lang].lv2];
+            while (POOL[lang][lv].length < 50) POOL[lang][lv].push(POOL[lang].lv2[0]);
         }
     }
 }
-fillPool();
+fillAllPools();
+
 function balanceAnswersGlobally() {
     for (let lang of ['zh', 'en']) {
         for (let lv of ['lv1', 'lv2', 'lv3', 'lv4']) {
@@ -484,116 +613,230 @@ function balanceAnswersGlobally() {
 }
 balanceAnswersGlobally();
 
-// ---------- 遊戲核心 (已移除所有得分顯示UI相關操作) ----------
-let g = {
-    idx: 0, score: 0, activeQs: [], timer: null, timeLeft: 0, totalT: 0,
-    paused: false, lang: 'zh', answered: false, bufferInterval: null
+// --------------------------------------------------------------
+// 遊戲核心 (倒數結束彈出答案彈窗，無手動按鈕)
+// --------------------------------------------------------------
+let gameState = {
+    idx: 0,
+    score: 0,
+    activeQs: [],
+    timer: null,
+    timeLeft: 0,
+    totalT: 0,
+    paused: false,
+    lang: 'zh',
+    questionEnded: false,      // 是否已結束此題（倒數結束或已處理）
+    selectedAnswer: null,
+    awaitingAnswerPopup: false,
+    scoreRecorded: false       // 防止重複計分
 };
 
-function clearBufferTimer() { if (g.bufferInterval) { clearInterval(g.bufferInterval); g.bufferInterval = null; } }
-function showPrize() { g.paused = true; if (g.timer) clearInterval(g.timer); clearBufferTimer(); document.getElementById('scrPrize').style.display = 'flex'; }
-function closePrize() { document.getElementById('scrPrize').style.display = 'none'; g.paused = false; document.getElementById('scrGame').classList.remove('active'); runBuffer(); }
+function clearBufferTimer() { if (gameState.bufferInterval) { clearInterval(gameState.bufferInterval); gameState.bufferInterval = null; } }
+function showPrize() { 
+    gameState.paused = true; 
+    if (gameState.timer) clearInterval(gameState.timer); 
+    clearBufferTimer(); 
+    document.getElementById('scrPrize').style.display = 'flex'; 
+}
+function closePrize() { 
+    document.getElementById('scrPrize').style.display = 'none'; 
+    gameState.paused = false; 
+    document.getElementById('scrGame').classList.remove('active'); 
+    runBuffer(); 
+}
 function showEnd() { 
     document.getElementById('scrGame').classList.remove('active'); 
-    document.getElementById('scrEnd').classList.add('active');
-    // 不再更新任何得分/獎品文字，完全移除相關操作
+    document.getElementById('scrEnd').classList.add('active'); 
 }
 
-function checkAnswer(selected) {
-    if (g.answered || g.idx >= 20) return;
-    g.answered = true;
-    if (g.timer) { clearInterval(g.timer); g.timer = null; }
-    const q = g.activeQs[g.idx];
-    const isCorrect = (selected === q.c);
-    if (isCorrect) { g.score++; }   // 內部保持計分邏輯(用於每5題觸發獎勵，不顯示)
-    const optADiv = document.getElementById('optA'), optBDiv = document.getElementById('optB');
-    optADiv.classList.remove('correct', 'wrong'); optBDiv.classList.remove('correct', 'wrong');
-    if (q.c === 'A') { optADiv.classList.add('correct'); optBDiv.classList.add('wrong'); } 
-    else { optBDiv.classList.add('correct'); optADiv.classList.add('wrong'); }
-    setTimeout(() => {
-        g.idx++; g.answered = false;
-        document.getElementById('mainProgress').style.width = (g.idx / 20 * 100) + "%";
-        if (g.idx === 20) showEnd();
-        else {
-            if (g.idx % 5 === 0 && g.idx < 20) showPrize();
-            else { document.getElementById('scrGame').classList.remove('active'); runBuffer(); }
-        }
-    }, 1500);
+// 記錄分數（如果尚未記錄）
+function recordScoreIfNeeded() {
+    if (gameState.scoreRecorded) return;
+    const q = gameState.activeQs[gameState.idx];
+    if (gameState.selectedAnswer && gameState.selectedAnswer === q.c) {
+        gameState.score++;
+    }
+    gameState.scoreRecorded = true;
 }
 
-function startClock() {
+// 顯示答案彈窗 (倒數結束時呼叫)
+function showAnswerPopup() {
+    if (gameState.questionEnded || gameState.awaitingAnswerPopup) return;
+    const q = gameState.activeQs[gameState.idx];
+    const correctLetter = q.c;
+    const correctText = (correctLetter === 'A') ? q.a : q.b;
+    const answerDisplay = `✅ 正确答案：${correctLetter}. ${correctText}`;
+    document.getElementById('answerText').innerHTML = answerDisplay;
+    document.getElementById('answerPopup').style.display = 'flex';
+    gameState.awaitingAnswerPopup = true;
+    gameState.questionEnded = true;
+    if (gameState.timer) clearInterval(gameState.timer);
+}
+
+// 點擊彈窗“下一題”按鈕：記錄分數，關閉彈窗，進入buffer閃動5秒後下一題
+function closeAnswerAndGoNext() {
+    if (!gameState.awaitingAnswerPopup) return;
+    // 記錄分數
+    recordScoreIfNeeded();
+    // 關閉彈窗
+    document.getElementById('answerPopup').style.display = 'none';
+    gameState.awaitingAnswerPopup = false;
+    // 直接進入下一題的buffer（閃動5秒）
+    proceedToNextQuestionBuffer();
+}
+
+// 進入下一題的緩衝流程
+function proceedToNextQuestionBuffer() {
+    gameState.idx++;
+    if (gameState.idx === 20) {
+        showEnd();
+        return;
+    }
+    // 每5題觸發獎勵
+    if (gameState.idx % 5 === 0 && gameState.idx < 20) {
+        showPrize();
+        return;
+    }
+    document.getElementById('mainProgress').style.width = (gameState.idx / 20 * 100) + "%";
+    // 重置狀態
+    gameState.questionEnded = false;
+    gameState.selectedAnswer = null;
+    gameState.scoreRecorded = false;
+    gameState.awaitingAnswerPopup = false;
+    // 清除選項高亮樣式
+    document.getElementById('optA').classList.remove('correct', 'wrong');
+    document.getElementById('optB').classList.remove('correct', 'wrong');
+    document.getElementById('optA').style.opacity = '1';
+    document.getElementById('optB').style.opacity = '1';
+    // 進入緩衝畫面
+    runBuffer();
+}
+
+function onOptionClick(opt) {
+    if (gameState.questionEnded || gameState.paused || gameState.awaitingAnswerPopup) return;
+    gameState.selectedAnswer = opt;
+    // 簡單視覺反饋
+    document.getElementById('optA').style.opacity = opt === 'A' ? '1' : '0.7';
+    document.getElementById('optB').style.opacity = opt === 'B' ? '1' : '0.7';
+}
+
+function loadCurrentQuestion() {
+    const q = gameState.activeQs[gameState.idx];
+    document.getElementById('qDisplay').innerText = q.q;
+    document.getElementById('optA').innerHTML = `A: ${q.a}`;
+    document.getElementById('optB').innerHTML = `B: ${q.b}`;
+    document.getElementById('uiIdx').innerText = gameState.idx + 1;
+}
+
+function startClockForCurrent() {
+    if (gameState.timer) clearInterval(gameState.timer);
+    const level = Math.floor(gameState.idx / 5) + 1;
+    let baseTime = level === 1 ? 13 : level === 2 ? 11 : level === 3 ? 9 : 7;
+    gameState.totalT = baseTime;
+    gameState.timeLeft = gameState.totalT;
     const ring = document.getElementById('timerRing'), txt = document.getElementById('timerText');
-    if (g.timer) clearInterval(g.timer);
-    g.timer = setInterval(() => {
-        if (!g.paused && !g.answered) {
-            g.timeLeft -= 0.1;
-            const displaySec = Math.ceil(g.timeLeft);
+    ring.style.strokeDashoffset = 0;
+    txt.innerText = gameState.totalT;
+    txt.style.color = "var(--accent)";
+    txt.classList.remove('timer-danger-anim');
+    gameState.timer = setInterval(() => {
+        if (!gameState.paused && !gameState.questionEnded && !gameState.awaitingAnswerPopup) {
+            gameState.timeLeft -= 0.1;
+            const displaySec = Math.ceil(gameState.timeLeft);
             txt.innerText = displaySec;
             const circumference = 691;
-            let offset = circumference - (circumference * (g.timeLeft / g.totalT));
+            let offset = circumference - (circumference * (gameState.timeLeft / gameState.totalT));
             if (offset < 0) offset = 0;
             ring.style.strokeDashoffset = offset;
-            if (g.timeLeft <= 3) { ring.style.stroke = "var(--danger)"; txt.style.color = "var(--danger)"; txt.classList.add('timer-danger-anim'); }
-            else if (g.timeLeft <= g.totalT / 2) { ring.style.stroke = "var(--warning)"; txt.style.color = "var(--warning)"; txt.classList.remove('timer-danger-anim'); }
-            else { ring.style.stroke = "var(--accent)"; txt.style.color = "var(--accent)"; txt.classList.remove('timer-danger-anim'); }
-            if (g.timeLeft <= 0) { clearInterval(g.timer); g.timer = null; if (!g.answered) checkAnswer(''); }
+            if (gameState.timeLeft <= 3) {
+                ring.style.stroke = "var(--danger)";
+                txt.style.color = "var(--danger)";
+                txt.classList.add('timer-danger-anim');
+            } else if (gameState.timeLeft <= gameState.totalT / 2) {
+                ring.style.stroke = "var(--warning)";
+                txt.style.color = "var(--warning)";
+                txt.classList.remove('timer-danger-anim');
+            } else {
+                ring.style.stroke = "var(--accent)";
+                txt.style.color = "var(--accent)";
+                txt.classList.remove('timer-danger-anim');
+            }
+            if (gameState.timeLeft <= 0 && !gameState.questionEnded && !gameState.awaitingAnswerPopup) {
+                clearInterval(gameState.timer);
+                gameState.timer = null;
+                showAnswerPopup();
+            }
         }
     }, 100);
 }
 
-function displayCurrentQuestion() {
-    const q = g.activeQs[g.idx];
-    document.getElementById('qDisplay').innerText = q.q;
-    document.getElementById('optA').innerHTML = `A: ${q.a}`;
-    document.getElementById('optB').innerHTML = `B: ${q.b}`;
-    document.getElementById('optA').classList.remove('correct', 'wrong');
-    document.getElementById('optB').classList.remove('correct', 'wrong');
-    const level = Math.floor(g.idx / 5) + 1;
-    let baseTime = level === 1 ? 13 : level === 2 ? 11 : level === 3 ? 9 : 7;
-    g.totalT = baseTime; g.timeLeft = g.totalT;
-    const ring = document.getElementById('timerRing'); ring.style.strokeDashoffset = 0;
-    const txt = document.getElementById('timerText'); txt.innerText = g.totalT; txt.style.color = "var(--accent)"; txt.classList.remove('timer-danger-anim');
-    startClock();
-}
-
 function runBuffer() {
-    if (g.idx >= 20) return;
+    if (gameState.idx >= 20) return;
     clearBufferTimer();
     const scrBuffer = document.getElementById('scrBuffer'), bufferNum = document.getElementById('bufferNum');
     scrBuffer.classList.add('active');
-    let count = 5; bufferNum.innerText = count;
-    g.bufferInterval = setInterval(() => {
-        if (!g.paused) { count--; bufferNum.innerText = count; if (count <= 0) { clearBufferTimer(); scrBuffer.classList.remove('active'); document.getElementById('scrGame').classList.add('active'); document.getElementById('uiIdx').innerText = g.idx+1; displayCurrentQuestion(); } }
+    let count = 5;
+    bufferNum.innerText = count;
+    gameState.bufferInterval = setInterval(() => {
+        if (!gameState.paused) {
+            count--;
+            bufferNum.innerText = count;
+            if (count <= 0) {
+                clearBufferTimer();
+                scrBuffer.classList.remove('active');
+                document.getElementById('scrGame').classList.add('active');
+                loadCurrentQuestion();
+                startClockForCurrent();
+            }
+        }
     }, 1000);
 }
 
-function bindOptions() {
-    const optA = document.getElementById('optA'), optB = document.getElementById('optB');
-    const handlerA = () => { if (!g.answered && !g.paused) checkAnswer('A'); };
-    const handlerB = () => { if (!g.answered && !g.paused) checkAnswer('B'); };
-    optA.removeEventListener('click', optA._hdl); optB.removeEventListener('click', optB._hdl);
-    optA._hdl = handlerA; optB._hdl = handlerB;
-    optA.addEventListener('click', handlerA); optB.addEventListener('click', handlerB);
-}
-
 function initGame(lang) {
-    if (g.timer) clearInterval(g.timer); clearBufferTimer();
-    g.paused = false; g.answered = false; g.idx = 0; g.score = 0; g.lang = lang;
-    // 不再重設任何得分顯示元素
+    if (gameState.timer) clearInterval(gameState.timer);
+    clearBufferTimer();
+    gameState.paused = false;
+    gameState.idx = 0;
+    gameState.score = 0;
+    gameState.lang = lang;
+    gameState.questionEnded = false;
+    gameState.selectedAnswer = null;
+    gameState.awaitingAnswerPopup = false;
+    gameState.scoreRecorded = false;
     document.getElementById('mainProgress').style.width = "0%";
     const p = POOL[lang];
     const shuffle = (arr, n) => [...arr].sort(() => 0.5 - Math.random()).slice(0, n);
-    g.activeQs = [...shuffle(p.lv1,5), ...shuffle(p.lv2,5), ...shuffle(p.lv3,5), ...shuffle(p.lv4,5)];
+    gameState.activeQs = [
+        ...shuffle(p.lv1, 5),
+        ...shuffle(p.lv2, 5),
+        ...shuffle(p.lv3, 5),
+        ...shuffle(p.lv4, 5)
+    ];
     document.getElementById('scrStart').classList.remove('active');
     document.getElementById('scrEnd').classList.remove('active');
     document.getElementById('scrPrize').style.display = 'none';
+    document.getElementById('answerPopup').style.display = 'none';
     document.getElementById('uiCtrls').style.display = 'flex';
-    bindOptions();
+    // 綁定選項點擊
+    document.getElementById('optA').onclick = () => onOptionClick('A');
+    document.getElementById('optB').onclick = () => onOptionClick('B');
+    // 綁定彈窗按鈕
+    document.getElementById('nextFromAnswerBtn').onclick = () => closeAnswerAndGoNext();
+    // 重置視覺
+    document.getElementById('optA').classList.remove('correct', 'wrong');
+    document.getElementById('optB').classList.remove('correct', 'wrong');
+    document.getElementById('optA').style.opacity = '1';
+    document.getElementById('optB').style.opacity = '1';
     runBuffer();
 }
 
-function togglePause() { g.paused = !g.paused; document.getElementById('pauseBtn').innerText = g.paused ? "▶️ 繼續遊戲" : "⏸️ 暫停遊戲"; }
-document.addEventListener('DOMContentLoaded', () => { document.getElementById('pauseBtn').onclick = togglePause; });
+function togglePause() {
+    gameState.paused = !gameState.paused;
+    document.getElementById('pauseBtn').innerText = gameState.paused ? "▶️ 繼續遊戲" : "⏸️ 暫停遊戲";
+}
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('pauseBtn').onclick = togglePause;
+});
 </script>
 </body>
 </html>
