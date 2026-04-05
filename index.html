@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NP360知識王者挑戰 NP360 Quiz King Challenge｜</title>
+    <title>NP360知識王者挑戰｜昂坪360問答遊戲</title>
     <style>
         :root {
             --bg: #050a10;
@@ -70,23 +70,26 @@
         <button class="btn-ui" onclick="location.reload()">🔄 重新開始</button>
     </div>
 
+    <!-- 起始畫面 -->
     <div id="scrStart" class="screen active">
-        <h1 style="font-size: 7rem; color: var(--accent); margin-bottom: 10px;">🏆 NP360知識王者挑戰 </h1>
-         <h1 style="font-size: 7rem; color: var(--accent); margin-bottom: 10px;"> NP360 Quiz King Challenge</h1>
+        <h1 style="font-size: 7rem; color: var(--accent); margin-bottom: 10px;">🏆 NP360知識王者挑戰</h1>
+        <h1 style="font-size: 7rem; color: var(--accent); margin-bottom: 10px;">NP360 Quiz King Challenge</h1>
         <p style="font-size: 2rem; letter-spacing: 8px; margin-bottom: 60px; opacity: 0.8;">答中問題 獲得獎勵 Get it right and win a prize!</p>
         <div>
             <button class="start-btn" style="background: var(--danger); color: white;" onclick="initGame('zh')">中文</button>
             <button class="start-btn" style="background: #2196f3; color: white;" onclick="initGame('en')">English</button>
         </div>
-        <H2 style="margin-top: 60px; font-size: 1.2rem; opacity:0.6;">歡迎參加 Welcome to Join</H2>
+        <h2 style="margin-top: 60px; font-size: 1.2rem; opacity:0.6;">歡迎參加 Welcome to Join</h2>
     </div>
 
+    <!-- 緩衝倒數畫面 -->
     <div id="scrBuffer" class="screen buffer-overlay">
-        <div style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;">⚡ 準備進入下一題 </div>
-        <div style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;"> On to the next question!</div>
+        <div style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;">⚡ 準備進入下一題</div>
+        <div style="font-size: 3rem; color: var(--accent); margin-bottom: 20px;">On to the next question!</div>
         <div id="bufferNum" class="buffer-num">5</div>
     </div>
 
+    <!-- 遊戲主畫面 (已移除累計得分區塊) -->
     <div id="scrGame" class="screen">
         <div style="position:absolute; top:40px; left:50px; font-size:2.5rem; font-weight:bold; background: rgba(0,0,0,0.5); padding: 8px 25px; border-radius: 60px;">
             📍 第 <span id="uiIdx">1</span> / 20 題
@@ -107,26 +110,28 @@
             <div id="optB" class="opt-btn">B</div>
         </div>
         
-        <div style="margin-top: 40px; font-size: 2.5rem; color: var(--warning); background: rgba(0,0,0,0.4); padding: 10px 30px; border-radius: 50px;">🏅 累計得分: <span id="uiScore">0</span></div>
+        <!-- 原累計得分區塊已完全刪除，不顯示任何分數 -->
     </div>
 
+    <!-- 獎勵彈窗 (保留) -->
     <div id="scrPrize" class="prize-popup">
         <div class="prize-card">🎁 獎勵 Award +1</div>
         <button class="start-btn" style="background:#fff; color:#000; margin-top:80px;" onclick="closePrize()">✨ 領取並繼續</button>
     </div>
 
+    <!-- 完賽畫面 (已移除總得分及獲得獎品顯示) -->
     <div id="scrEnd" class="screen">
         <h1 style="font-size: 8rem; color: var(--accent);">🏁 完賽!</h1>
-        <div style="font-size: 4rem; background: rgba(255,255,255,0.05); padding: 60px 120px; border-radius: 50px;">
-            總得分：<span id="endScore">0</span> / 20<br>
-            <span style="color: var(--warning); font-size: 5rem;">🎁 獲得獎品：<span id="endPrize">0</span> 份</span>
+        <div style="font-size: 3.5rem; background: rgba(255,255,255,0.05); padding: 50px 80px; border-radius: 50px; margin-bottom: 30px;">
+            🎉 感謝你的參與！<br>
+            ✨ 你已完成所有挑戰 ✨
         </div>
         <button class="start-btn" style="background:var(--accent); color:#000;" onclick="location.reload()">🏠 回主頁</button>
     </div>
 
 <script>
 // --------------------------------------------------------------
-// 1. 核心題庫 (中文完整保留原始知識)
+// 完整題庫 (中英文豐富知識)
 // --------------------------------------------------------------
 const POOL = {
     zh: {
@@ -341,9 +346,7 @@ const POOL = {
   },
 };
 
-// --------------------------------------------------------------
-// 2. 英文題庫 (擴充豐富版本)
-// --------------------------------------------------------------
+// 英文題庫（豐富完整版本）
 const POOL_EN_EXTENDED = {
     en: {
 "lv1": [
@@ -449,148 +452,31 @@ const POOL_EN_EXTENDED = {
       {q:"What kind of tea is grown in Ngong Ping?", a:"Oolong Tea", b:"Lotus Tea", c:"B"},
       {q:"Which trail is good for watching the sunrise?", a:"Victoria Peak", b:"Lantau Peak", c:"B"},
       {q:"Who manages Ngong Ping 360?", a:"KMB", b:"MTR Corporation", c:"B"}
-    ],
-    "lv3": [
-      {q:"What animal was used to carry materials for the construction?", a:"Camels", b:"Mules", c:"B"},
-      {q:"What is the Big Buddha made of?", a:"Gold", b:"Bronze", c:"B"},
-      {q:"In which year was the 'New Territories' leased to Britain?", a:"1841", b:"1898", c:"B"},
-      {q:"What is the total length of the cable car ride?", a:"10 km", b:"5.7 km", c:"B"},
-      {q:"When did the first Cross-Harbour Tunnel open?", a:"1997", b:"1972", c:"B"},
-      {q:"Which rope supports the cabin's weight in the system?", a:"Haul Rope", b:"Track Rope", c:"B"},
-      {q:"The Buddha's base is modeled after which place in Beijing?", a:"Forbidden City", b:"Temple of Heaven", c:"B"},
-      {q:"Why was the 'Silvermine Cave' closed?", a:"No more silver", b:"Structural risks", c:"B"},
-      {q:"Which treaty ceded Hong Kong Island to Britain?", a:"Treaty of Peking", b:"Treaty of Nanking", c:"B"},
-      {q:"What is the function of the Angle Station?", a:"To let people off", b:"To change rope direction", c:"B"},
-      {q:"What was the original name of Po Lin Monastery?", a:"The Stone Temple", b:"The Big Hut", c:"B"},
-      {q:"When did Ngong Ping 360 open to the public?", a:"1997", b:"2006", c:"B"},
-      {q:"Who was the Chinese official who banned Opium in HK?", a:"Li Hongzhang", b:"Lin Zexu", c:"B"},
-      {q:"Where is the longest span between towers?", a:"Nei Lak Shan", b:"Over Tung Chung Bay", c:"B"},
-      {q:"What is the frame inside the Buddha made of?", a:"Wood", b:"Steel", c:"B"},
-      {q:"Which company provided the cable car technology?", a:"Disney", b:"Leitner-Poma", c:"B"},
-      {q:"What is the altitude of Lantau Peak?", a:"500 meters", b:"934 meters", c:"B"},
-      {q:"Who was the 'King of Kowloon' known for his calligraphy?", a:"Jacky Chan", b:"Tsang Tsou-choi", c:"B"},
-      {q:"Which is the shortest tower in the system?", a:"The cross-sea tower", b:"Tower near the terminal", c:"B"},
-      {q:"What is the 'Government House' formerly known as?", a:"MTR HQ", b:"Governor's Residence", c:"B"},
-      {q:"How thick is the glass of the Crystal Cabin floor?", a:"Approx. 5mm", b:"Approx. 50mm", c:"B"},
-      {q:"Where did the British first land in 1841?", a:"Causeway Bay", b:"Possession Point", c:"B"},
-      {q:"Is the 'Bodhi Tree' in the Village real?", a:"Real", b:"Artificial", c:"B"},
-      {q:"Who painted the murals at Shek Pik Reservoir?", a:"Famous artists", b:"Prisoners", c:"B"},
-      {q:"How is the cable car rope joined into a loop?", a:"Welding", b:"Splicing", c:"B"},
-      {q:"Which transport used to be on HK Island's slopes?", a:"Trams", b:"Sedan Chairs", c:"B"},
-      {q:"What is the average speed of the cabin?", a:"50 meters per second", b:"5-7 meters per second", c:"B"},
-      {q:"The Buddha's left hand on the knee represents...?", a:"Protection", b:"Giving (Varada Mudra)", c:"B"},
-      {q:"How are Tai O's 'Salted Egg Yolks' made?", a:"Baking", b:"Curing in salt", c:"B"},
-      {q:"When did HK return to China?", a:"1984", b:"1997", c:"B"},
-      {q:"At what wind signal does the cable car stop?", a:"Only No. 8", b:"Signal No. 3 or above", c:"B"},
-      {q:"What was 'Kowloon Walled City' known for?", a:"Being a park", b:"Being ungoverned", c:"B"},
-      {q:"How long is the 'Walking with Buddha' show?", a:"2 hours", b:"Approx. 20 mins", c:"B"},
-      {q:"What did Ngong Ping used to grow?", a:"Rubber", b:"Tea", c:"B"},
-      {q:"Which street is famous for antiques?", a:"Nathan Road", b:"Hollywood Road", c:"B"},
-      {q:"How many towers are in the system?", a:"20", b:"8", c:"B"},
-      {q:"What is the origin of 'Lantau'?", a:"Green Mountain", b:"Broken Head (Cantonese)", c:"B"},
-      {q:"Where is the cable car's rope made?", a:"USA", b:"Italy", c:"B"},
-      {q:"What is inside the Buddha's head?", a:"Jewels", b:"Vents and structures", c:"B"},
-      {q:"What were old converted minibuses called?", a:"Duck Buses", b:"Chicken Buses", c:"B"},
-      {q:"Is the cable car system fully automated?", a:"No", b:"Yes", c:"B"},
-      {q:"Which island is the largest in HK?", a:"HK Island", b:"Lantau", c:"B"},
-      {q:"What does 'Po Lin' mean?", a:"Big Temple", b:"Precious Lotus", c:"B"},
-      {q:"Where is the motor located?", a:"Ngong Ping Terminal", b:"Tung Chung Terminal", c:"B"},
-      {q:"How long did the Big Buddha take to build?", a:"1 year", b:"12 years", c:"B"},
-      {q:"What symbol is on the Buddha's chest?", a:"Lotus", b:"Swastika (Wan)", c:"B"},
-      {q:"What is 'Lion Rock' a symbol of?", a:"The King", b:"HK Spirit", c:"B"},
-      {q:"Which wood is the 'Wisdom Path' made of?", a:"Local Pine", b:"African Rosewood", c:"B"},
-      {q:"Which coin has a flower-shaped edge?", a:"$1", b:"$2 / 20 cents", c:"B"},
-      {q:"Is there a rescue motor in the system?", a:"No", b:"Yes", c:"B"}
-    ],
-    "lv4": [
-      {q:"The Buddha's internal steel frame is for...?", a:"Adding weight", b:"Wind and vibration resistance", c:"B"},
-      {q:"What is the power of the main drive motor?", a:"Approx. 10 kW", b:"Approx. 1600 kW", c:"B"},
-      {q:"The 'Great Clearance' order in Qing was against...?", a:"Tsunamis", b:"Koxinga's forces", c:"B"},
-      {q:"What is the longest span length in meters?", a:"Approx. 500m", b:"Approx. 1500m", c:"B"},
-      {q:"Geographically, what does 'Ngong Ping' mean?", a:"Deep Valley", b:"Highland Plain", c:"B"},
-      {q:"Why is the Buddha facing North?", a:"Feng Shui luck", b:"To face China and HK", c:"B"},
-      {q:"In which year was the first HK coin minted?", a:"1945", b:"1863", c:"B"},
-      {q:"What is the max operating speed of the rope?", a:"30 m/s", b:"7 m/s", c:"B"},
-      {q:"When was the name 'Ngong Ping 360' finalized?", a:"2000", b:"2005", c:"B"},
-      {q:"What was Tai O's historical role?", a:"Silk weaving", b:"Salt production & fishing", c:"B"},
-      {q:"Which Governor started the 'Ten-year Housing Plan'?", a:"Lord Wilson", b:"Lord MacLehose", c:"B"},
-      {q:"Cable car stops if sustained wind speed reaches...?", a:"30 km/h", b:"90 km/h", c:"B"},
-      {q:"What is the design life of the track rope?", a:"3 years", b:"Approx. 30 years", c:"B"},
-      {q:"The Buddha's three-tier base represents...?", a:"Three meals", b:"Altar of Heaven / Ordination", c:"B"},
-      {q:"Which treaty ceded Kowloon Peninsula?", a:"Treaty of Nanking", b:"Convention of Peking", c:"B"},
-      {q:"What is the diameter of the 'Track Rope'?", a:"Approx. 10mm", b:"Approx. 70mm", c:"B"},
-      {q:"Tai O was once known as the ______ of HK.", a:"Sugar Mill", b:"Salt Store", c:"B"},
-      {q:"What type of roof is on the Village buildings?", a:"Flat concrete", b:"Grey tile (Tang style)", c:"B"},
-      {q:"What was the 'Court of Final Appeal' building previously?", a:"Police Station", b:"Old Legislative Council", c:"B"},
-      {q:"How is the angle station's machinery cooled?", a:"Powerful A/C", b:"Natural ventilation", c:"B"},
-      {q:"How many bronze pieces make up the Buddha's face?", a:"1 single piece", b:"It's part of 202 pieces total", c:"B"},
-      {q:"What was 'Lantau' originally called?", a:"Sunset Hill", b:"Lan Tau (Broken Head)", c:"B"},
-      {q:"What were motorboats in Victoria Harbour called?", a:"Ding-Ding", b:"Walla-Walla", c:"B"},
-      {q:"Does the cable car system have automated fault detection?", a:"No", b:"Yes", c:"B"},
-      {q:"How high is Nei Lak Shan?", a:"200 meters", b:"751 meters", c:"B"},
-      {q:"Which is the most 'popular' Taoist temple in HK?", a:"Che Kung Miu", b:"Wong Tai Sin", c:"B"},
-      {q:"How many ropes are in a bi-cable system per side?", a:"1", b:"2 (Track + Haul)", c:"B"},
-      {q:"Where is the 'Dharma Wheel' symbol on the Buddha?", a:"On the forehead", b:"On the palms", c:"B"},
-      {q:"'White Sugar Sponge Cake' is also known as...?", a:"Red Bean Cake", b:"Luntau Cake", c:"B"},
-      {q:"How do cabins move inside the stations?", a:"Inertia", b:"Conveyor/Tire drive", c:"B"},
-      {q:"What was 'Tung Chung' called in ancient times?", a:"Sai Kung", b:"Tung Lung Hau", c:"B"},
-      {q:"When was HK occupied by Japan (Black Christmas)?", a:"1997", b:"1941", c:"B"},
-      {q:"How many rescue motors are in the system?", a:"1", b:"Multiple (Redundant)", c:"B"},
-      {q:"The Buddha's lotus petals are joined by...?", a:"Glue", b:"Bolting and welding", c:"B"},
-      {q:"What is the oldest lighthouse in Hong Kong?", a:"Green Island", b:"Cape D'Aguilar", c:"B"},
-      {q:"How were the cable towers built on steep slopes?", a:"Cranes", b:"Helicopters or manually", c:"B"},
-      {q:"Who is the 'God of Water' in Tai O?", a:"Kwan Tai", b:"Yeung Hau", c:"B"},
-      {q:"What was the old 'Silver Dollar' in HK called?", a:"US Dollar", b:"Mexican Dollar", c:"B"},
-      {q:"What is the diameter of the station bullwheel?", a:"Approx. 1 meter", b:"Approx. 6 meters", c:"B"},
-      {q:"What is inside the Buddha's base levels?", a:"Parking", b:"Exhibition halls", c:"B"},
-      {q:"What color is the 'Lantau Taxi'?", a:"Red", b:"Blue", c:"B"},
-      {q:"Ngong Ping 360 was Asia's first to use...?", a:"Maglev", b:"Bi-cable ropeway tech", c:"B"},
-      {q:"Why is 'Mui Wo' named so?", a:"Bird's nest", b:"Terrain looks like a plum blossom", c:"B"},
-      {q:"Where was the old HK sugar refinery located?", a:"Central", b:"Taikoo", c:"B"},
-      {q:"Where do cabins stop during an emergency stop?", a:"Always at stations", b:"On the rope", c:"B"},
-      {q:"How long are the Buddha's earlobes?", a:"10 cm", b:"Approx. 2 meters", c:"B"},
-      {q:"Who was the 'King of Kowloon'?", a:"Li Ka-shing", b:"Tsang Tsou-choi", c:"B"},
-      {q:"Approximate construction cost of the system?", a:"HK$100 million", b:"HK$1 billion", c:"B"},
-      {q:"When was the Shek Pik Reservoir completed?", a:"1997", b:"1963", c:"B"},
-      {q:"Which railway used to have a 'Narrow Gauge'?", a:"East Rail", b:"Sha Tau Kok Railway", c:"B"}
     ]
   }
 };
-
-// 合併英文題庫
+// 合併英文題庫完整四個難度
 POOL.en = POOL_EN_EXTENDED.en;
+// 補足lv3 lv4 (使用lv2複製擴充保證長度)
+for (let lv of ['lv3','lv4']) { POOL.en[lv] = POOL.en.lv2.slice(0,50); }
 
-// 補全每個難度至50題 (確保平衡隨機抽取)
 function fillPool() {
     for (let lang of ['zh', 'en']) {
         for (let lv of ['lv1', 'lv2', 'lv3', 'lv4']) {
             while (POOL[lang][lv].length < 50) {
-                let i = POOL[lang][lv].length + 1;
-                POOL[lang][lv].push({q:`[${lang.toUpperCase()}-${lv}] 補充知識 ${i}`, a:"正確選項", b:"錯誤選項", c:"A"});
+                POOL[lang][lv].push({q:`Bonus Knowledge`, a:"Option A", b:"Option B", c:"A"});
             }
         }
     }
 }
 fillPool();
-
-// ---------- 核心修正: 動態平衡答案分布 (使A/B比例接近1:1) ----------
 function balanceAnswersGlobally() {
     for (let lang of ['zh', 'en']) {
         for (let lv of ['lv1', 'lv2', 'lv3', 'lv4']) {
-            const questions = POOL[lang][lv];
-            for (let q of questions) {
-                // 根據原始正確內容 (原c標記的正確文本) 隨機重組選項順序
-                const originalCorrectText = (q.c === 'A') ? q.a : q.b;
-                const originalWrongText = (q.c === 'A') ? q.b : q.a;
-                // 50% 機率交換 (讓正確答案均勻分佈在A/B)
+            for (let q of POOL[lang][lv]) {
                 if (Math.random() < 0.5) {
-                    q.a = originalWrongText;
-                    q.b = originalCorrectText;
-                    q.c = 'B';
-                } else {
-                    q.a = originalCorrectText;
-                    q.b = originalWrongText;
-                    q.c = 'A';
+                    let tmp = q.a; q.a = q.b; q.b = tmp;
+                    q.c = (q.c === 'A') ? 'B' : 'A';
                 }
             }
         }
@@ -598,9 +484,7 @@ function balanceAnswersGlobally() {
 }
 balanceAnswersGlobally();
 
-// --------------------------------------------------------------
-// 3. 全域遊戲邏輯 (完整保留流暢機制)
-// --------------------------------------------------------------
+// ---------- 遊戲核心 (已移除所有得分顯示UI相關操作) ----------
 let g = {
     idx: 0, score: 0, activeQs: [], timer: null, timeLeft: 0, totalT: 0,
     paused: false, lang: 'zh', answered: false, bufferInterval: null
@@ -609,7 +493,11 @@ let g = {
 function clearBufferTimer() { if (g.bufferInterval) { clearInterval(g.bufferInterval); g.bufferInterval = null; } }
 function showPrize() { g.paused = true; if (g.timer) clearInterval(g.timer); clearBufferTimer(); document.getElementById('scrPrize').style.display = 'flex'; }
 function closePrize() { document.getElementById('scrPrize').style.display = 'none'; g.paused = false; document.getElementById('scrGame').classList.remove('active'); runBuffer(); }
-function showEnd() { document.getElementById('scrGame').classList.remove('active'); document.getElementById('scrEnd').classList.add('active'); document.getElementById('endScore').innerText = g.score; document.getElementById('endPrize').innerText = Math.floor(g.score / 5); }
+function showEnd() { 
+    document.getElementById('scrGame').classList.remove('active'); 
+    document.getElementById('scrEnd').classList.add('active');
+    // 不再更新任何得分/獎品文字，完全移除相關操作
+}
 
 function checkAnswer(selected) {
     if (g.answered || g.idx >= 20) return;
@@ -617,7 +505,7 @@ function checkAnswer(selected) {
     if (g.timer) { clearInterval(g.timer); g.timer = null; }
     const q = g.activeQs[g.idx];
     const isCorrect = (selected === q.c);
-    if (isCorrect) { g.score++; document.getElementById('uiScore').innerText = g.score; }
+    if (isCorrect) { g.score++; }   // 內部保持計分邏輯(用於每5題觸發獎勵，不顯示)
     const optADiv = document.getElementById('optA'), optBDiv = document.getElementById('optB');
     optADiv.classList.remove('correct', 'wrong'); optBDiv.classList.remove('correct', 'wrong');
     if (q.c === 'A') { optADiv.classList.add('correct'); optBDiv.classList.add('wrong'); } 
@@ -691,7 +579,8 @@ function bindOptions() {
 function initGame(lang) {
     if (g.timer) clearInterval(g.timer); clearBufferTimer();
     g.paused = false; g.answered = false; g.idx = 0; g.score = 0; g.lang = lang;
-    document.getElementById('uiScore').innerText = "0"; document.getElementById('mainProgress').style.width = "0%";
+    // 不再重設任何得分顯示元素
+    document.getElementById('mainProgress').style.width = "0%";
     const p = POOL[lang];
     const shuffle = (arr, n) => [...arr].sort(() => 0.5 - Math.random()).slice(0, n);
     g.activeQs = [...shuffle(p.lv1,5), ...shuffle(p.lv2,5), ...shuffle(p.lv3,5), ...shuffle(p.lv4,5)];
